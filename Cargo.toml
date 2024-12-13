@@ -1,5 +1,7 @@
 [package]
 name = "videotoolbox-rs"
+description = "Rust wrapper for apple's VideoToolbox framework"
+keywords = ["video", "videotoolbox", "encode", "decode", "macos"]
 version = "0.1.0"
 edition = "2021"
 authors = ["Per Johansson <per@doom.fisn>"]
