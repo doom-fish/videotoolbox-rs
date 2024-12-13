@@ -1,0 +1,9 @@
+[package]
+name = "videotoolbox-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+core-foundation = "0.10.0"
+core-media-rs = "0.3"
+thiserror = "2"
