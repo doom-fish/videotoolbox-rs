@@ -2,6 +2,10 @@
 name = "videotoolbox-rs"
 version = "0.1.0"
 edition = "2021"
+authors = ["Per Johansson <per@doom.fisn>"]
+repository = "https://github.com/doom-fish/core-frameworks"
+homepage = "https://doom.fish"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 core-foundation = "0.10.0"
