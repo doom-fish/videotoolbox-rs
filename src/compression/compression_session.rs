@@ -29,7 +29,7 @@ extern "C" {
         encoderSpecification: CFDictionaryRef,
         sourceImageBufferAttributes: CFDictionaryRef,
         compressedDataAllocator: CFAllocatorRef,
-        outputCallback: Option<VTCompressionOutputCallback>,
+        // outputCallback: Option<VTCompressionOutputCallback>,
         refcon: *mut c_void,
         compressionSessionOut: *mut VTCompressionSessionRef,
     ) -> OSStatus;
@@ -43,7 +43,7 @@ impl VTCompressionSession {
         encoder_specification: &CFDictionary,
         source_image_buffer_attributes: &CFDictionary,
         compressed_data_allocator: &CFAllocator,
-        output_callback: Option<VTCompressionOutputCallback>,
+        // output_callback: Option<VTCompressionOutputCallback>,
         refcon: *mut c_void,
     ) -> Self {
         unsafe {
@@ -56,7 +56,6 @@ impl VTCompressionSession {
                 encoder_specification.as_concrete_TypeRef(),
                 source_image_buffer_attributes.as_concrete_TypeRef(),
                 compressed_data_allocator.as_concrete_TypeRef(),
-                None,
                 std::ptr::null_mut(),
                 &mut session,
             );
