@@ -44,9 +44,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_max_keyframe_interval(120)
         .build()?;
 
-    // Encode one frame.
+    // Encode one frame and inspect the resulting CMSampleBuffer.
     let encoded = encoder.encode(&surface, (0, 60))?;
     println!("Got {} bytes of H.264", encoded.data.len());
+
+    if let Some(sb) = encoded.cm_sample_buffer() {
+        // Hand `sb` straight to avassetwriter::Writer::append_sample for
+        // zero-copy muxing — no raw pointer hand-off needed.
+        let _ = sb.is_valid();
+    }
 
     Ok(())
 }

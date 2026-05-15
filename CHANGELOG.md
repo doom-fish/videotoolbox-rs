@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-05-15
+
+### Changed (BREAKING)
+
+- `EncodedFrame::cm_sample_buffer_ptr()` returns a raw `*mut c_void` (kept
+  for direct extern-"C" hand-off); the new ergonomic accessor
+  **`EncodedFrame::cm_sample_buffer()`** returns `Option<&apple_cf::cm::CMSampleBuffer>`.
+  Downstream crates should prefer the safe form.
+- `EncodedFrame` now owns an `Option<apple_cf::cm::CMSampleBuffer>` instead
+  of a manually-retained raw pointer; retain/release moves into apple-cf.
+
+### Added
+
+- `apple-cf` as a regular dependency (with `cm` + `iosurface` features).
+
 ## [Unreleased]
 
 ### Added

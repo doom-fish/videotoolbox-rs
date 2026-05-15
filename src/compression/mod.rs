@@ -14,10 +14,9 @@ use crate::session::Codec;
 
 /// One encoded frame produced by [`CompressionSession::encode`].
 ///
-/// Owns a retained reference to the underlying `CMSampleBuffer` so it can be
-/// handed off zero-copy to downstream crates (e.g. `avassetwriter-rs`) via
-/// [`Self::cm_sample_buffer_ptr`]. The reference is released when the
-/// `EncodedFrame` is dropped.
+/// Wraps the encoder's `CMSampleBuffer` as a safe [`apple_cf::cm::CMSampleBuffer`]
+/// so downstream crates (e.g. `avassetwriter-rs`) can hand it off zero-copy
+/// without dealing with raw `*mut c_void` pointers.
 pub struct EncodedFrame {
     /// Encoded bitstream bytes (NAL units for H.264/HEVC, frame data for `ProRes`).
     pub data: Vec<u8>,
@@ -25,50 +24,39 @@ pub struct EncodedFrame {
     pub presentation_time: (i64, i32),
     /// Encoder hint flags (e.g. dropped, asynchronous).
     pub info_flags: u32,
-    /// Retained `CMSampleBufferRef` (opaque to safe Rust). Use
-    /// [`Self::cm_sample_buffer_ptr`] when handing off to other Apple crates.
-    sample_buffer: ffi::CMSampleBufferRef,
+    /// Underlying CoreMedia sample buffer. `None` for dropped frames.
+    sample_buffer: Option<apple_cf::cm::CMSampleBuffer>,
 }
 
-// SAFETY: CMSampleBuffer is documented as thread-safe for read access; we only
-// share the opaque pointer between threads (e.g. via a channel) and never
-// dereference it from Rust.
-unsafe impl Send for EncodedFrame {}
-unsafe impl Sync for EncodedFrame {}
-
 impl EncodedFrame {
-    /// Raw `CMSampleBufferRef` retained by this frame. Returns `null` for
-    /// dropped frames. The pointer remains valid until this `EncodedFrame`
-    /// is dropped.
-    ///
-    /// Intended for cross-crate hand-off (e.g. `avassetwriter-rs`).
-    /// Do **not** call `CFRelease` on the returned pointer.
+    /// Borrow the encoded sample buffer for cross-crate hand-off (e.g. to
+    /// `avassetwriter::Writer::append_sample`). Returns `None` for dropped
+    /// frames.
     #[must_use]
-    pub const fn cm_sample_buffer_ptr(&self) -> *mut core::ffi::c_void {
+    pub const fn cm_sample_buffer(&self) -> Option<&apple_cf::cm::CMSampleBuffer> {
+        self.sample_buffer.as_ref()
+    }
+
+    /// Raw `CMSampleBufferRef` for code that bypasses `apple_cf` and talks
+    /// directly to a Swift bridge via `extern "C"`.
+    ///
+    /// Returns `null` for dropped frames. Do **not** call `CFRelease` on
+    /// the returned pointer — ownership stays with this `EncodedFrame`.
+    #[must_use]
+    pub fn cm_sample_buffer_ptr(&self) -> *mut core::ffi::c_void {
         self.sample_buffer
+            .as_ref()
+            .map_or(core::ptr::null_mut(), apple_cf::cm::CMSampleBuffer::as_ptr)
     }
 }
 
 impl Clone for EncodedFrame {
     fn clone(&self) -> Self {
-        let sample_buffer = if self.sample_buffer.is_null() {
-            core::ptr::null_mut()
-        } else {
-            unsafe { ffi::CFRetain(self.sample_buffer.cast()) as ffi::CMSampleBufferRef }
-        };
         Self {
             data: self.data.clone(),
             presentation_time: self.presentation_time,
             info_flags: self.info_flags,
-            sample_buffer,
-        }
-    }
-}
-
-impl Drop for EncodedFrame {
-    fn drop(&mut self) {
-        if !self.sample_buffer.is_null() {
-            unsafe { ffi::CFRelease(self.sample_buffer.cast()) };
+            sample_buffer: self.sample_buffer.clone(),
         }
     }
 }
@@ -472,7 +460,7 @@ unsafe extern "C" fn encode_callback(
             data: Vec::new(),
             presentation_time: (0, 0),
             info_flags,
-            sample_buffer: ptr::null_mut(),
+            sample_buffer: None,
         })
     } else {
         let pts = ffi::CMSampleBufferGetPresentationTimeStamp(sample_buffer);
@@ -491,14 +479,15 @@ unsafe extern "C" fn encode_callback(
             if copy_status != 0 {
                 Err(VTError::EncoderCallback(copy_status))
             } else {
-                // Retain the CMSampleBuffer so EncodedFrame can hand it off
-                // zero-copy to downstream crates (e.g. avassetwriter-rs).
-                let retained = ffi::CFRetain(sample_buffer.cast()) as ffi::CMSampleBufferRef;
+                // Wrap the CMSampleBuffer in a safe apple_cf type. The
+                // wrapper retains-on-take so the encoder's reference is
+                // unaffected.
+                let safe = apple_cf::cm::CMSampleBuffer::from_raw_retained(sample_buffer);
                 Ok(EncodedFrame {
                     data,
                     presentation_time: (pts.value, pts.timescale),
                     info_flags,
-                    sample_buffer: retained,
+                    sample_buffer: safe,
                 })
             }
         }

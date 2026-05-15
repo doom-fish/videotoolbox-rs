@@ -29,8 +29,7 @@ fn read_headers(paths: &[PathBuf]) -> String {
     paths
         .iter()
         .map(|p| {
-            std::fs::read_to_string(p)
-                .unwrap_or_else(|e| panic!("can't read {}: {e}", p.display()))
+            std::fs::read_to_string(p).unwrap_or_else(|e| panic!("can't read {}: {e}", p.display()))
         })
         .collect::<Vec<_>>()
         .join("\n")
@@ -214,7 +213,10 @@ fn vt_compression_function_coverage() {
     let sdk = sdk_root();
     let header =
         sdk.join("System/Library/Frameworks/VideoToolbox.framework/Headers/VTCompressionSession.h");
-    let apple = extract_by_pattern(r"\b(VTCompressionSession[A-Za-z0-9_]+|VTIs[A-Za-z0-9_]+)\s*\(", &read_headers(&[header]));
+    let apple = extract_by_pattern(
+        r"\b(VTCompressionSession[A-Za-z0-9_]+|VTIs[A-Za-z0-9_]+)\s*\(",
+        &read_headers(&[header]),
+    );
     let ours: BTreeSet<String> = extract_our_extern_fns()
         .into_iter()
         .filter(|n| n.starts_with("VTCompressionSession") || n.starts_with("VTIs"))
@@ -296,10 +298,7 @@ fn vt_profile_level_constant_coverage() {
         r"\b(kVTProfileLevel_[A-Za-z0-9_]+)",
         &read_headers(&[header]),
     );
-    let ours = extract_by_pattern(
-        r"\b(kVTProfileLevel_[A-Za-z0-9_]+)",
-        &read_our_ffi(),
-    );
+    let ours = extract_by_pattern(r"\b(kVTProfileLevel_[A-Za-z0-9_]+)", &read_our_ffi());
 
     Report {
         framework: "kVTProfileLevel_* constants",
@@ -315,16 +314,14 @@ fn vt_profile_level_constant_coverage() {
 #[test]
 fn cm_video_codec_type_coverage() {
     let sdk = sdk_root();
-    let header = sdk.join("System/Library/Frameworks/CoreMedia.framework/Headers/CMFormatDescription.h");
+    let header =
+        sdk.join("System/Library/Frameworks/CoreMedia.framework/Headers/CMFormatDescription.h");
     let apple = extract_by_pattern(
         r"\b(kCMVideoCodecType_[A-Za-z0-9_]+)",
         &read_headers(&[header]),
     );
     // Constants the Codec enum currently lowers into.
-    let ours = extract_by_pattern(
-        r"\b(kCMVideoCodecType_[A-Za-z0-9_]+)",
-        &read_our_ffi(),
-    );
+    let ours = extract_by_pattern(r"\b(kCMVideoCodecType_[A-Za-z0-9_]+)", &read_our_ffi());
 
     // For v0.1 we only wrap the codecs that have a Rust enum variant.
     let kept: BTreeSet<&str> = [
