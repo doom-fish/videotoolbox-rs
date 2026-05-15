@@ -43,7 +43,7 @@ decompression = []
 all-features-flag = ["compression", "decompression"]
 
 [dependencies]
-apple-cf = { path = "../apple-cf-rs", default-features = false, features = ["cm", "iosurface"] }
+apple-cf = { path = "../apple-cf-rs", version = "0.1", default-features = false, features = ["cm", "iosurface"] }
 
 [dev-dependencies]
 regex-lite = "0.1"
