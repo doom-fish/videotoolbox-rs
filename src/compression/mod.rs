@@ -24,7 +24,7 @@ pub struct EncodedFrame {
     pub presentation_time: (i64, i32),
     /// Encoder hint flags (e.g. dropped, asynchronous).
     pub info_flags: u32,
-    /// Underlying CoreMedia sample buffer. `None` for dropped frames.
+    /// Underlying `CoreMedia` sample buffer. `None` for dropped frames.
     sample_buffer: Option<apple_cf::cm::CMSampleBuffer>,
 }
 
@@ -167,7 +167,7 @@ impl CompressionSessionBuilder {
                 self.width, self.height
             )));
         }
-        CompressionSession::new_internal(self)
+        CompressionSession::new_internal(&self)
     }
 }
 
@@ -197,7 +197,7 @@ impl CompressionSession {
         CompressionSessionBuilder::new(width, height, codec)
     }
 
-    fn new_internal(b: CompressionSessionBuilder) -> Result<Self, VTError> {
+    fn new_internal(b: &CompressionSessionBuilder) -> Result<Self, VTError> {
         let (tx, rx) = mpsc::channel();
         let state = Arc::new(EncoderState {
             out_tx: Mutex::new(tx),
@@ -290,6 +290,11 @@ impl CompressionSession {
     /// wrapped, [`VTError::EncodeFailed`] if the encoder rejects the frame, or
     /// [`VTError::EncoderCallback`] if the encoder reports a non-zero status
     /// asynchronously.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the encoder's internal callback receiver mutex is poisoned
+    /// (only possible if a previous callback panicked while holding it).
     pub fn encode(
         &self,
         surface: &IOSurface,
@@ -324,6 +329,7 @@ impl CompressionSession {
         rx.recv().map_err(|_| VTError::EncoderCallback(-1))?
     }
 
+    #[allow(clippy::unused_self)]
     fn wrap_iosurface(&self, surface: &IOSurface) -> Result<ffi::CVPixelBufferRef, VTError> {
         let mut pb: ffi::CVPixelBufferRef = ptr::null_mut();
         let status = unsafe {
@@ -432,7 +438,7 @@ impl core::fmt::Debug for CompressionSession {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("CompressionSession")
             .field("session", &self.session)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

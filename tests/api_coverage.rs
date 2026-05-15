@@ -12,6 +12,8 @@
 //! See `tests/api_coverage.rs` in apple-cf-rs for the same harness shape;
 //! this version targets the encoder-only v0.1 surface of `videotoolbox`.
 
+#![allow(clippy::cast_precision_loss, clippy::iter_on_single_items)]
+
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::process::Command;
@@ -173,7 +175,7 @@ fn vt_property_intentionally_omitted(apple: &BTreeSet<String>) -> BTreeSet<Strin
 }
 
 /// Profile-level constants we DON'T wrap for v0.1 (we ship the 5 most-common
-/// ones — Baseline/Main/High AutoLevel for H.264 + Main/Main10 AutoLevel for
+/// ones — Baseline/Main/High `AutoLevel` for H.264 + Main/Main10 `AutoLevel` for
 /// HEVC). Compute by subtracting the kept set from Apple's set.
 fn vt_profile_intentionally_omitted(apple: &BTreeSet<String>) -> BTreeSet<String> {
     let kept: BTreeSet<&str> = [

@@ -1,6 +1,8 @@
 //! Smoke test: allocate a 1920×1080 BGRA `IOSurface`, fill it with a solid
 //! colour, and encode a single H.264 frame.
 //!
+
+#![allow(clippy::similar_names)]
 //! Run with: `cargo run --example 01_encode_smoke`
 //!
 //! Verifies the full Rust → extern "C" → `VideoToolbox` path end-to-end.

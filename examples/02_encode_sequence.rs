@@ -1,6 +1,8 @@
 //! Encode a 30-frame sequence and verify each frame's bitstream looks like
 //! valid H.264 (AVCC length-prefix or Annex-B start codes).
 //!
+
+#![allow(clippy::similar_names)]
 //! Run with: `cargo run --example 02_encode_sequence`
 
 use apple_cf::iosurface::{IOSurface, IOSurfaceLockOptions};
