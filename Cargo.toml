@@ -46,6 +46,7 @@ all-features-flag = ["compression", "decompression"]
 apple-cf = { path = "../apple-cf-rs" }
 
 [dev-dependencies]
+regex-lite = "0.1"
 
 [package.metadata.docs.rs]
 all-features = true
