@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-05-16
+
+### Added
+
+- **`MotionEstimationSession`** (`VTMotionEstimationSession`,
+  macOS 26+) — between-frame motion-vector estimation. Async
+  `motion(of:comparedTo:)` is wrapped in a synchronous Rust API
+  via the Swift bridge; all other entry points (create/invalidate/
+  copy-source-attrs/complete-frames) use direct C FFI.
+- **`RawProcessingSession`** (`VTRAWProcessingSession`, macOS 15+) —
+  ProRes RAW / CinemaDNG decoder. `process(frame:)` runs on the
+  Swift async path; `parameters()` returns a fully-typed
+  `Vec<RawProcessingParameter>` with key / name / description /
+  value-type / min / max / current / initial / camera / neutral
+  values pulled from the underlying `CFDictionary`. Includes a
+  raw `set_parameters_raw()` writeback path.
+- **`FrameProcessor`** session wrapper exposing all 7 pipelines:
+  `start_super_resolution`, `start_motion_blur`,
+  `start_temporal_noise_filter`, `start_frame_rate_conversion`,
+  `start_low_latency_super_resolution`,
+  `start_low_latency_frame_interpolation`, `start_optical_flow`.
+- Swift bridge restructured into 4 files (`Core.swift`,
+  `MotionEstimation.swift`, `RAWProcessing.swift`,
+  `FrameProcessor.swift`) following the `screencapturekit-rs`
+  pattern — Swift handles complexity (async/throws, configuration
+  classes), Rust gets clean ergonomic types.
+- New example `08_frame_processor_pipelines` exercises every
+  pipeline on M-series hardware.
+
+### Changed
+
+- Swift bridge build now compiles 4 source files instead of 1; the
+  `frame_processor` feature still gates the entire bridge so
+  encoder-only users pay zero overhead.
+
 ## [0.9.0] - 2026-05-16
 
 ### Added

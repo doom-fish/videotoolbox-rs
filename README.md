@@ -77,10 +77,12 @@ screencapturekit-rs ──► IOSurface ──► videotoolbox-rs ──► H.26
 - [x] `VTMultiPassStorage` + `VTFrameSilo` (two-pass encoding)
 - [x] `VTHDRPerFrameMetadataGenerationSession` (Dolby Vision metadata)
 - [x] `VTFrameProcessor` capability queries (super-resolution / optical flow detection)
+- [x] `VTFrameProcessor` pipeline (super-resolution + motion blur + temporal noise + frame-rate conversion + optical flow + 2 low-latency variants)
+- [x] `VTMotionEstimationSession`
+- [x] `VTRAWProcessingSession` (with parameter introspection)
 - [x] `VTProfessionalVideoWorkflow` decoder/encoder registration
 - [x] `VTCreateCGImageFromCVPixelBuffer`
 - [x] HEVC profile-level helpers
-- [ ] Full `VTFrameProcessor` pipeline (process frames with Metal command buffers — v0.10)
 - [ ] Async encode API via `VTCompressionSessionEncodeFrameWithOutputHandler`
 
 ## License

@@ -53,6 +53,12 @@ pub mod utilities;
 #[cfg(feature = "frame_processor")]
 #[cfg_attr(docsrs, doc(cfg(feature = "frame_processor")))]
 pub mod frame_processor;
+#[cfg(feature = "frame_processor")]
+#[cfg_attr(docsrs, doc(cfg(feature = "frame_processor")))]
+pub mod motion_estimation;
+#[cfg(feature = "frame_processor")]
+#[cfg_attr(docsrs, doc(cfg(feature = "frame_processor")))]
+pub mod raw_processing;
 
 pub use error::VTError;
 pub use encoder_list::{available_video_encoders, VideoEncoder};
@@ -67,9 +73,13 @@ pub use utilities::{
 
 #[cfg(feature = "frame_processor")]
 pub use frame_processor::{
-    frame_processor_capabilities, super_resolution_supported_scale_factors,
+    frame_processor_capabilities, super_resolution_supported_scale_factors, FrameProcessor,
     FrameProcessorCapabilities,
 };
+#[cfg(feature = "frame_processor")]
+pub use motion_estimation::MotionEstimationSession;
+#[cfg(feature = "frame_processor")]
+pub use raw_processing::{RawProcessingParameter, RawProcessingSession};
 
 #[cfg(feature = "compression")]
 pub use compression::{CompressionSession, CompressionSessionBuilder, EncodedFrame};

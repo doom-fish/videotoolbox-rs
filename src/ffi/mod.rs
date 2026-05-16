@@ -373,12 +373,75 @@ extern "C" {
     ) -> OSStatus;
     pub fn VTRegisterProfessionalVideoWorkflowVideoDecoders();
     pub fn VTRegisterProfessionalVideoWorkflowVideoEncoders();
+
+    // ---- VTMotionEstimationSession (v0.10, macOS 26+) ----
+    pub fn VTMotionEstimationSessionGetTypeID() -> usize;
+    pub fn VTMotionEstimationSessionCreate(
+        allocator: CFAllocatorRef,
+        selection_options: CFDictionaryRef,
+        width: u32,
+        height: u32,
+        session_out: *mut VTMotionEstimationSessionRef,
+    ) -> OSStatus;
+    pub fn VTMotionEstimationSessionInvalidate(session: VTMotionEstimationSessionRef);
+    pub fn VTMotionEstimationSessionCopySourcePixelBufferAttributes(
+        session: VTMotionEstimationSessionRef,
+        attributes_out: *mut CFDictionaryRef,
+    ) -> OSStatus;
+    pub fn VTMotionEstimationSessionCompleteFrames(
+        session: VTMotionEstimationSessionRef,
+    ) -> OSStatus;
+
+    // ---- VTRAWProcessingSession (v0.10, macOS 15+) ----
+    pub fn VTRAWProcessingSessionGetTypeID() -> usize;
+    pub fn VTRAWProcessingSessionCreate(
+        allocator: CFAllocatorRef,
+        format_description: *const c_void,
+        output_pixel_buffer_attributes: CFDictionaryRef,
+        processing_session_options: CFDictionaryRef,
+        session_out: *mut VTRAWProcessingSessionRef,
+    ) -> OSStatus;
+    pub fn VTRAWProcessingSessionInvalidate(session: VTRAWProcessingSessionRef);
+    pub fn VTRAWProcessingSessionCompleteFrames(session: VTRAWProcessingSessionRef) -> OSStatus;
+    pub fn VTRAWProcessingSessionCopyProcessingParameters(
+        session: VTRAWProcessingSessionRef,
+        out_parameter_array: *mut CFArrayRef,
+    ) -> OSStatus;
+    pub fn VTRAWProcessingSessionSetProcessingParameters(
+        session: VTRAWProcessingSessionRef,
+        processing_parameters: CFDictionaryRef,
+    ) -> OSStatus;
+
+    // ---- VTRAW parameter keys (v0.10) ----
+    pub static kVTRAWProcessingParameter_Key: CFStringRef;
+    pub static kVTRAWProcessingParameter_Name: CFStringRef;
+    pub static kVTRAWProcessingParameter_Description: CFStringRef;
+    pub static kVTRAWProcessingParameter_Enabled: CFStringRef;
+    pub static kVTRAWProcessingParameter_ValueType: CFStringRef;
+    pub static kVTRAWProcessingParameterValueType_Boolean: CFStringRef;
+    pub static kVTRAWProcessingParameterValueType_Integer: CFStringRef;
+    pub static kVTRAWProcessingParameterValueType_Float: CFStringRef;
+    pub static kVTRAWProcessingParameterValueType_List: CFStringRef;
+    pub static kVTRAWProcessingParameterValueType_SubGroup: CFStringRef;
+    pub static kVTRAWProcessingParameter_ListArray: CFStringRef;
+    pub static kVTRAWProcessingParameterListElement_Label: CFStringRef;
+    pub static kVTRAWProcessingParameterListElement_Description: CFStringRef;
+    pub static kVTRAWProcessingParameterListElement_ListElementID: CFStringRef;
+    pub static kVTRAWProcessingParameter_SubGroup: CFStringRef;
+    pub static kVTRAWProcessingParameter_MaximumValue: CFStringRef;
+    pub static kVTRAWProcessingParameter_MinimumValue: CFStringRef;
+    pub static kVTRAWProcessingParameter_InitialValue: CFStringRef;
+    pub static kVTRAWProcessingParameter_NeutralValue: CFStringRef;
+    pub static kVTRAWProcessingParameter_CameraValue: CFStringRef;
+    pub static kVTRAWProcessingParameter_CurrentValue: CFStringRef;
 }
 
 pub type CFArrayRef = *const c_void;
 pub type VTFrameSiloRef = *mut c_void;
 pub type VTMultiPassStorageRef = *mut c_void;
 pub type VTHDRPerFrameMetadataGenerationSessionRef = *mut c_void;
+pub type VTMotionEstimationSessionRef = *mut c_void;
+pub type VTRAWProcessingSessionRef = *mut c_void;
 
 pub type VTPixelTransferSessionRef = *mut c_void;
 pub type VTPixelRotationSessionRef = *mut c_void;
