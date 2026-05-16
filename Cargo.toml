@@ -1,6 +1,6 @@
 [package]
 name = "videotoolbox"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/doom-fish/videotoolbox-rs"
@@ -43,7 +43,7 @@ decompression = []
 all-features-flag = ["compression", "decompression"]
 
 [dependencies]
-apple-cf = { path = "../apple-cf-rs", version = "0.2", default-features = false, features = ["cm", "iosurface", "cv"] }
+apple-cf = { path = "../apple-cf-rs", version = ">=0.2, <0.4", default-features = false, features = ["cm", "iosurface", "cv"] }
 
 [dev-dependencies]
 regex-lite = "0.1"
@@ -68,3 +68,6 @@ required-features = ["compression"]
 [profile.release]
 debug = "full"
 strip = "none"
+
+[[example]]
+name = "04_transfer_rotate"

@@ -254,7 +254,43 @@ extern "C" {
 
     pub static kVTDecompressionPropertyKey_RealTime: CFStringRef;
     pub static kVTDecompressionPropertyKey_MaximumOutputBufferDepth: CFStringRef;
+
+    // ---- VTPixelTransferSession (v0.6) ----
+    pub fn VTPixelTransferSessionCreate(
+        allocator: CFAllocatorRef,
+        pixel_transfer_session_out: *mut VTPixelTransferSessionRef,
+    ) -> OSStatus;
+    pub fn VTPixelTransferSessionInvalidate(session: VTPixelTransferSessionRef);
+    pub fn VTPixelTransferSessionTransferImage(
+        session: VTPixelTransferSessionRef,
+        source_buffer: CVPixelBufferRef,
+        destination_buffer: CVPixelBufferRef,
+    ) -> OSStatus;
+
+    // ---- VTPixelRotationSession (v0.6) ----
+    pub fn VTPixelRotationSessionCreate(
+        allocator: CFAllocatorRef,
+        pixel_rotation_session_out: *mut VTPixelRotationSessionRef,
+    ) -> OSStatus;
+    pub fn VTPixelRotationSessionInvalidate(session: VTPixelRotationSessionRef);
+    pub fn VTPixelRotationSessionRotateImage(
+        session: VTPixelRotationSessionRef,
+        source_buffer: CVPixelBufferRef,
+        destination_buffer: CVPixelBufferRef,
+    ) -> OSStatus;
+
+    pub static kVTPixelRotationPropertyKey_Rotation: CFStringRef;
+    pub static kVTPixelRotationPropertyKey_FlipHorizontalOrientation: CFStringRef;
+    pub static kVTPixelRotationPropertyKey_FlipVerticalOrientation: CFStringRef;
+
+    pub static kVTRotation_0: CFStringRef;
+    pub static kVTRotation_CW90: CFStringRef;
+    pub static kVTRotation_180: CFStringRef;
+    pub static kVTRotation_CCW90: CFStringRef;
 }
+
+pub type VTPixelTransferSessionRef = *mut c_void;
+pub type VTPixelRotationSessionRef = *mut c_void;
 
 pub type VTDecompressionSessionRef = *mut c_void;
 pub type VTDecompressionOutputCallback = unsafe extern "C" fn(

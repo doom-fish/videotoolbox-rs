@@ -44,9 +44,11 @@ pub mod session;
 #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 pub mod compression;
 pub mod decompression;
+pub mod transfer;
 
 pub use error::VTError;
 pub use session::Codec;
+pub use transfer::{PixelRotationSession, PixelTransferSession, Rotation};
 
 #[cfg(feature = "compression")]
 pub use compression::{CompressionSession, CompressionSessionBuilder, EncodedFrame};
@@ -55,6 +57,7 @@ pub use compression::{CompressionSession, CompressionSessionBuilder, EncodedFram
 pub mod prelude {
     pub use crate::error::VTError;
     pub use crate::session::Codec;
+    pub use crate::transfer::{PixelRotationSession, PixelTransferSession, Rotation};
 
     #[cfg(feature = "compression")]
     pub use crate::compression::{CompressionSession, CompressionSessionBuilder, EncodedFrame};
