@@ -1,6 +1,6 @@
 [package]
 name = "videotoolbox"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/doom-fish/videotoolbox-rs"
@@ -14,6 +14,8 @@ readme = "README.md"
 build = "build.rs"
 include = [
     "src/**/*",
+    "swift-bridge/Package.swift",
+    "swift-bridge/Sources/**/*",
     "build.rs",
     "Cargo.toml",
     "README.md",
@@ -40,7 +42,11 @@ default = ["compression"]
 # for the decoder symbols, and vice versa).
 compression = []
 decompression = []
-all-features-flag = ["compression", "decompression"]
+# Brings in a small Swift bridge so we can reach VTFrameProcessor (an
+# Objective-C-only API the pure-C FFI can't otherwise call). Off by default
+# so existing pure-C users don't pay for the `swift build` step.
+frame_processor = []
+all-features-flag = ["compression", "decompression", "frame_processor"]
 
 [dependencies]
 apple-cf = { path = "../apple-cf-rs", version = ">=0.2, <0.4", default-features = false, features = ["cm", "iosurface", "cv"] }
@@ -74,3 +80,7 @@ name = "04_transfer_rotate"
 
 [[example]]
 name = "05_encoder_list"
+
+[[example]]
+name = "06_frame_processor_caps"
+required-features = ["frame_processor"]

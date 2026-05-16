@@ -47,10 +47,20 @@ pub mod decompression;
 pub mod encoder_list;
 pub mod transfer;
 
+#[cfg(feature = "frame_processor")]
+#[cfg_attr(docsrs, doc(cfg(feature = "frame_processor")))]
+pub mod frame_processor;
+
 pub use error::VTError;
 pub use encoder_list::{available_video_encoders, VideoEncoder};
 pub use session::Codec;
 pub use transfer::{PixelRotationSession, PixelTransferSession, Rotation};
+
+#[cfg(feature = "frame_processor")]
+pub use frame_processor::{
+    frame_processor_capabilities, super_resolution_supported_scale_factors,
+    FrameProcessorCapabilities,
+};
 
 #[cfg(feature = "compression")]
 pub use compression::{CompressionSession, CompressionSessionBuilder, EncodedFrame};
