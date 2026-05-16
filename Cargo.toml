@@ -1,6 +1,6 @@
 [package]
 name = "videotoolbox"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/doom-fish/videotoolbox-rs"
@@ -71,3 +71,6 @@ strip = "none"
 
 [[example]]
 name = "04_transfer_rotate"
+
+[[example]]
+name = "05_encoder_list"

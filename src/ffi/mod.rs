@@ -87,6 +87,18 @@ extern "C" {
     pub fn CFRelease(cf: CFTypeRef);
     pub fn CFRetain(cf: CFTypeRef) -> CFTypeRef;
 
+    pub fn CFArrayGetCount(array: CFArrayRef) -> isize;
+    pub fn CFArrayGetValueAtIndex(array: CFArrayRef, index: isize) -> *const c_void;
+    pub fn CFDictionaryGetValue(d: CFDictionaryRef, key: *const c_void) -> *const c_void;
+    pub fn CFStringGetCString(
+        s: CFStringRef,
+        buffer: *mut c_char,
+        buffer_size: isize,
+        encoding: u32,
+    ) -> bool;
+    pub fn CFStringGetLength(s: CFStringRef) -> isize;
+    pub fn CFNumberGetValue(num: CFNumberRef, the_type: CFNumberType, value_ptr: *mut c_void) -> bool;
+
     pub fn CFNumberCreate(
         allocator: CFAllocatorRef,
         the_type: CFNumberType,
@@ -287,7 +299,20 @@ extern "C" {
     pub static kVTRotation_CW90: CFStringRef;
     pub static kVTRotation_180: CFStringRef;
     pub static kVTRotation_CCW90: CFStringRef;
+
+    // ---- VTVideoEncoderList (v0.7) ----
+    pub fn VTCopyVideoEncoderList(
+        options: CFDictionaryRef,
+        list_out: *mut CFArrayRef,
+    ) -> OSStatus;
+    pub static kVTVideoEncoderList_CodecType: CFStringRef;
+    pub static kVTVideoEncoderList_EncoderID: CFStringRef;
+    pub static kVTVideoEncoderList_CodecName: CFStringRef;
+    pub static kVTVideoEncoderList_EncoderName: CFStringRef;
+    pub static kVTVideoEncoderList_DisplayName: CFStringRef;
 }
+
+pub type CFArrayRef = *const c_void;
 
 pub type VTPixelTransferSessionRef = *mut c_void;
 pub type VTPixelRotationSessionRef = *mut c_void;
