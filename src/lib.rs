@@ -43,6 +43,7 @@ pub mod session;
 #[cfg(feature = "compression")]
 #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 pub mod compression;
+pub mod decompression;
 
 pub use error::VTError;
 pub use session::Codec;
