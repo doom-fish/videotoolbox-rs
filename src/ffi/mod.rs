@@ -217,6 +217,47 @@ extern "C" {
 
     pub static kVTH264EntropyMode_CABAC: CFStringRef;
     pub static kVTH264EntropyMode_CAVLC: CFStringRef;
+
+    // ---- VTDecompressionSession (decoder side, added v0.3) ----
+    pub fn VTDecompressionSessionCreate(
+        allocator: CFAllocatorRef,
+        video_format_description: CMFormatDescriptionRef,
+        video_decoder_specification: CFDictionaryRef,
+        destination_image_buffer_attributes: CFDictionaryRef,
+        output_callback: *const VTDecompressionOutputCallbackRecord,
+        decompression_session_out: *mut VTDecompressionSessionRef,
+    ) -> OSStatus;
+
+    pub fn VTDecompressionSessionInvalidate(session: VTDecompressionSessionRef);
+
+    pub fn VTDecompressionSessionDecodeFrame(
+        session: VTDecompressionSessionRef,
+        sample_buffer: CMSampleBufferRef,
+        decode_flags: u32,
+        source_frame_ref_con: *mut c_void,
+        info_flags_out: *mut u32,
+    ) -> OSStatus;
+
+    pub fn VTDecompressionSessionWaitForAsynchronousFrames(
+        session: VTDecompressionSessionRef,
+    ) -> OSStatus;
+}
+
+pub type VTDecompressionSessionRef = *mut c_void;
+pub type VTDecompressionOutputCallback = unsafe extern "C" fn(
+    decompression_output_ref_con: *mut c_void,
+    source_frame_ref_con: *mut c_void,
+    status: OSStatus,
+    info_flags: u32,
+    image_buffer: *mut c_void,
+    presentation_time_stamp: CMTime,
+    presentation_duration: CMTime,
+);
+
+#[repr(C)]
+pub struct VTDecompressionOutputCallbackRecord {
+    pub decompression_output_callback: VTDecompressionOutputCallback,
+    pub decompression_output_ref_con: *mut c_void,
 }
 
 // Suppress unused variant warnings on c_uint placeholder types.
