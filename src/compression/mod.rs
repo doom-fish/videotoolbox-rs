@@ -100,6 +100,34 @@ pub struct CompressionSessionBuilder {
     average_bit_rate: Option<i32>,
     expected_frame_rate: Option<f64>,
     max_keyframe_interval: Option<i32>,
+    quality: Option<f32>,
+    profile_level: Option<ProfileLevel>,
+}
+
+/// Encoded profile/level for the underlying codec. Maps to
+/// `kVTProfileLevel_*` `CFStringRef` constants.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ProfileLevel {
+    H264BaselineAutoLevel,
+    H264MainAutoLevel,
+    H264HighAutoLevel,
+    HEVCMainAutoLevel,
+    HEVCMain10AutoLevel,
+}
+
+impl ProfileLevel {
+    pub(crate) fn as_cf_string(self) -> ffi::CFStringRef {
+        unsafe {
+            match self {
+                Self::H264BaselineAutoLevel => ffi::kVTProfileLevel_H264_Baseline_AutoLevel,
+                Self::H264MainAutoLevel => ffi::kVTProfileLevel_H264_Main_AutoLevel,
+                Self::H264HighAutoLevel => ffi::kVTProfileLevel_H264_High_AutoLevel,
+                Self::HEVCMainAutoLevel => ffi::kVTProfileLevel_HEVC_Main_AutoLevel,
+                Self::HEVCMain10AutoLevel => ffi::kVTProfileLevel_HEVC_Main10_AutoLevel,
+            }
+        }
+    }
 }
 
 impl CompressionSessionBuilder {
@@ -114,6 +142,8 @@ impl CompressionSessionBuilder {
             average_bit_rate: None,
             expected_frame_rate: None,
             max_keyframe_interval: None,
+            quality: None,
+            profile_level: None,
         }
     }
 
@@ -150,6 +180,22 @@ impl CompressionSessionBuilder {
     #[must_use]
     pub const fn with_max_keyframe_interval(mut self, n: i32) -> Self {
         self.max_keyframe_interval = Some(n);
+        self
+    }
+
+    /// Encoding quality hint, `0.0..=1.0`. `0.0` minimum quality / size,
+    /// `1.0` maximum. Wraps `kVTCompressionPropertyKey_Quality`.
+    #[must_use]
+    pub const fn with_quality(mut self, quality: f32) -> Self {
+        self.quality = Some(quality);
+        self
+    }
+
+    /// Profile/level for the encoded stream. See [`ProfileLevel`].
+    /// Wraps `kVTCompressionPropertyKey_ProfileLevel`.
+    #[must_use]
+    pub const fn with_profile_level(mut self, profile: ProfileLevel) -> Self {
+        self.profile_level = Some(profile);
         self
     }
 
@@ -268,6 +314,20 @@ impl CompressionSession {
                 unsafe { ffi::kVTCompressionPropertyKey_MaxKeyFrameInterval },
                 "MaxKeyFrameInterval",
                 n,
+            )?;
+        }
+        if let Some(q) = b.quality {
+            session.set_property_f64(
+                unsafe { ffi::kVTCompressionPropertyKey_Quality },
+                "Quality",
+                f64::from(q.clamp(0.0, 1.0)),
+            )?;
+        }
+        if let Some(profile) = b.profile_level {
+            session.set_property_cf_string(
+                unsafe { ffi::kVTCompressionPropertyKey_ProfileLevel },
+                "ProfileLevel",
+                profile.as_cf_string(),
             )?;
         }
 
@@ -409,6 +469,51 @@ impl CompressionSession {
         if status != 0 {
             return Err(VTError::SetPropertyFailed {
                 key: key_name.to_string(),
+                status,
+            });
+        }
+        Ok(())
+    }
+
+    fn set_property_cf_string(
+        &self,
+        key: ffi::CFStringRef,
+        key_name: &'static str,
+        value: ffi::CFStringRef,
+    ) -> Result<(), VTError> {
+        let status = unsafe { ffi::VTSessionSetProperty(self.session, key, value.cast()) };
+        if status != 0 {
+            return Err(VTError::SetPropertyFailed {
+                key: key_name.to_string(),
+                status,
+            });
+        }
+        Ok(())
+    }
+
+    /// Set an arbitrary property on the underlying `VTCompressionSession`.
+    /// `value` must be a CoreFoundation object (`CFNumberRef`,
+    /// `CFBooleanRef`, `CFStringRef`, ...).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::SetPropertyFailed`] if Apple rejects the
+    /// key/value pair.
+    ///
+    /// # Safety
+    ///
+    /// `key` must be a valid `CFStringRef`; `value` must be a valid
+    /// CoreFoundation object pointer for the property's expected type
+    /// (per Apple's `VTCompressionProperties.h`).
+    pub unsafe fn set_property(
+        &self,
+        key: ffi::CFStringRef,
+        value: ffi::CFTypeRef,
+    ) -> Result<(), VTError> {
+        let status = ffi::VTSessionSetProperty(self.session, key, value);
+        if status != 0 {
+            return Err(VTError::SetPropertyFailed {
+                key: "<custom>".to_string(),
                 status,
             });
         }

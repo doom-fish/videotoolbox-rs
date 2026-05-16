@@ -208,6 +208,7 @@ extern "C" {
     pub static kVTCompressionPropertyKey_MaxKeyFrameInterval: CFStringRef;
     pub static kVTCompressionPropertyKey_ProfileLevel: CFStringRef;
     pub static kVTCompressionPropertyKey_H264EntropyMode: CFStringRef;
+    pub static kVTCompressionPropertyKey_Quality: CFStringRef;
 
     pub static kVTProfileLevel_H264_Baseline_AutoLevel: CFStringRef;
     pub static kVTProfileLevel_H264_Main_AutoLevel: CFStringRef;
