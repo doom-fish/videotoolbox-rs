@@ -242,6 +242,18 @@ extern "C" {
     pub fn VTDecompressionSessionWaitForAsynchronousFrames(
         session: VTDecompressionSessionRef,
     ) -> OSStatus;
+
+    pub fn VTDecompressionSessionFinishDelayedFrames(
+        session: VTDecompressionSessionRef,
+    ) -> OSStatus;
+
+    pub fn VTDecompressionSessionCanAcceptFormatDescription(
+        session: VTDecompressionSessionRef,
+        new_format_desc: CMFormatDescriptionRef,
+    ) -> bool;
+
+    pub static kVTDecompressionPropertyKey_RealTime: CFStringRef;
+    pub static kVTDecompressionPropertyKey_MaximumOutputBufferDepth: CFStringRef;
 }
 
 pub type VTDecompressionSessionRef = *mut c_void;

@@ -160,6 +160,109 @@ impl DecompressionSession {
             Err(VTError::EncoderCallback(status))
         }
     }
+
+    /// Set an arbitrary property on the underlying
+    /// `VTDecompressionSession`. `value` must be a CoreFoundation
+    /// object matching Apple's per-key contract (see
+    /// `VTDecompressionProperties.h`).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::SetPropertyFailed`] if Apple rejects the
+    /// key/value pair.
+    ///
+    /// # Safety
+    ///
+    /// `key` must be a valid `CFStringRef` and `value` must be a
+    /// valid CoreFoundation pointer for the property's expected type.
+    pub unsafe fn set_property(
+        &self,
+        key: ffi::CFStringRef,
+        value: ffi::CFTypeRef,
+    ) -> Result<(), VTError> {
+        let status = ffi::VTSessionSetProperty(self.session.cast(), key, value);
+        if status != 0 {
+            return Err(VTError::SetPropertyFailed {
+                key: "<custom>".to_string(),
+                status,
+            });
+        }
+        Ok(())
+    }
+
+    /// Tell the decoder that this is real-time playback (prioritise
+    /// low latency over throughput). Wraps the boolean property
+    /// `kVTDecompressionPropertyKey_RealTime`.
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::set_property`].
+    pub fn set_real_time(&self, real_time: bool) -> Result<(), VTError> {
+        let v = unsafe {
+            if real_time {
+                ffi::kCFBooleanTrue
+            } else {
+                ffi::kCFBooleanFalse
+            }
+        };
+        unsafe {
+            self.set_property(ffi::kVTDecompressionPropertyKey_RealTime, v.cast())
+        }
+    }
+
+    /// Suggest a maximum number of frames the decoder may keep
+    /// internally awaiting reordering (B-frame reorder depth).
+    /// Wraps `kVTDecompressionPropertyKey_MaximumOutputBufferDepth`.
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::set_property`].
+    pub fn set_max_output_buffer_depth(&self, depth: i32) -> Result<(), VTError> {
+        let v = unsafe {
+            ffi::CFNumberCreate(
+                ffi::kCFAllocatorDefault,
+                ffi::kCFNumberSInt32Type,
+                core::ptr::from_ref(&depth).cast(),
+            )
+        };
+        let r = unsafe {
+            self.set_property(
+                ffi::kVTDecompressionPropertyKey_MaximumOutputBufferDepth,
+                v.cast(),
+            )
+        };
+        unsafe { ffi::CFRelease(v) };
+        r
+    }
+
+    /// Finish any decoded frames the decoder has been holding back
+    /// for B-frame reordering. Wraps
+    /// `VTDecompressionSessionFinishDelayedFrames`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::EncoderCallback`] on non-zero `OSStatus`.
+    pub fn finish_delayed_frames(&self) -> Result<(), VTError> {
+        let status =
+            unsafe { ffi::VTDecompressionSessionFinishDelayedFrames(self.session) };
+        if status == 0 {
+            Ok(())
+        } else {
+            Err(VTError::EncoderCallback(status))
+        }
+    }
+
+    /// True if this session can decode samples described by `format`
+    /// without rebuilding the session. Wraps
+    /// `VTDecompressionSessionCanAcceptFormatDescription`.
+    ///
+    /// # Safety
+    ///
+    /// `format` must be a valid `CMFormatDescriptionRef` (typically
+    /// obtained from another `CMSampleBuffer`).
+    pub unsafe fn can_accept_format(&self, format: ffi::CMFormatDescriptionRef) -> bool {
+        ffi::VTDecompressionSessionCanAcceptFormatDescription(self.session, format)
+    }
 }
 
 unsafe extern "C" fn decode_trampoline(
