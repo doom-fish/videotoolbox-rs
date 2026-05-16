@@ -8,8 +8,11 @@ use core::ffi::c_void;
 use core::ptr;
 use std::sync::{Arc, Mutex};
 
+use apple_cf::cf::{CFDictionary, CFType};
+
 use crate::error::VTError;
 use crate::ffi;
+use crate::session::{self, Codec};
 
 /// One decoded video frame.
 pub struct DecodedFrame {
@@ -64,6 +67,19 @@ impl Drop for DecompressionSession {
 }
 
 impl DecompressionSession {
+    /// CoreFoundation type identifier for `VTDecompressionSession`.
+    #[must_use]
+    pub fn type_id() -> usize {
+        unsafe { ffi::VTDecompressionSessionGetTypeID() }
+    }
+
+    /// Returns `true` when the current machine advertises hardware decode for
+    /// the given codec family.
+    #[must_use]
+    pub fn is_hardware_decode_supported(codec: Codec) -> bool {
+        unsafe { ffi::VTIsHardwareDecodeSupported(codec.as_cm_codec_type()) != 0 }
+    }
+
     /// Open a decompression session for the given format description.
     /// `format_description` is the `CMFormatDescriptionRef` Apple expects
     /// — typically obtained from `CMSampleBuffer.format_description()` on
@@ -157,6 +173,68 @@ impl DecompressionSession {
         } else {
             Err(VTError::EncoderCallback(status))
         }
+    }
+
+    /// Copy a black pixel buffer matching the session's current output format.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] on a non-zero `OSStatus`.
+    pub fn copy_black_pixel_buffer(&self) -> Result<apple_cf::cv::CVPixelBuffer, VTError> {
+        let mut out = ptr::null_mut();
+        let status =
+            unsafe { ffi::VTDecompressionSessionCopyBlackPixelBuffer(self.session, &mut out) };
+        if status != 0 || out.is_null() {
+            return Err(VTError::ApiFailed {
+                api: "VTDecompressionSessionCopyBlackPixelBuffer",
+                status,
+            });
+        }
+        apple_cf::cv::CVPixelBuffer::from_raw(out.cast()).ok_or(VTError::ApiFailed {
+            api: "VTDecompressionSessionCopyBlackPixelBuffer",
+            status,
+        })
+    }
+
+    /// Copy one `VTSession` property from the decoder.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the underlying property query fails.
+    ///
+    /// # Safety
+    ///
+    /// `key` must be a valid CoreFoundation string pointer accepted by
+    /// `VTSessionCopyProperty` for a decompression session.
+    pub unsafe fn copy_property(&self, key: ffi::CFStringRef) -> Result<Option<CFType>, VTError> {
+        session::copy_property(self.session.cast(), key)
+    }
+
+    /// Copy the decoder's supported-property dictionary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the query fails.
+    pub fn supported_property_dictionary(&self) -> Result<CFDictionary, VTError> {
+        unsafe { session::copy_supported_property_dictionary(self.session.cast()) }
+    }
+
+    /// Copy the decoder's serializable property dictionary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the query fails.
+    pub fn serializable_properties(&self) -> Result<CFDictionary, VTError> {
+        unsafe { session::copy_serializable_properties(self.session.cast()) }
+    }
+
+    /// Set multiple decoder properties at once.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if `VideoToolbox` rejects the dictionary.
+    pub fn set_properties(&self, properties: &CFDictionary) -> Result<(), VTError> {
+        unsafe { session::set_properties(self.session.cast(), properties) }
     }
 
     /// Set an arbitrary property on the underlying

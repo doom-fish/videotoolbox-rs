@@ -26,6 +26,8 @@ pub enum VTError {
     /// The user-supplied async callback reported a non-zero status when
     /// encoding a frame.
     EncoderCallback(OSStatus),
+    /// A specific `VideoToolbox` / `CoreVideo` / `CoreMedia` API returned non-zero.
+    ApiFailed { api: &'static str, status: OSStatus },
     /// An invalid argument was supplied (e.g. zero width).
     InvalidArgument(String),
 }
@@ -40,7 +42,8 @@ impl VTError {
             | Self::PrepareFailed(s)
             | Self::EncodeFailed(s)
             | Self::CompleteFailed(s)
-            | Self::EncoderCallback(s) => Some(*s),
+            | Self::EncoderCallback(s)
+            | Self::ApiFailed { status: s, .. } => Some(*s),
             Self::PixelBufferCreateFailed(_) | Self::InvalidArgument(_) => None,
         }
     }
@@ -62,6 +65,7 @@ impl fmt::Display for VTError {
                 write!(f, "CVPixelBufferCreateWithIOSurface failed: {s}")
             }
             Self::EncoderCallback(s) => write!(f, "encoder callback reported status {s}"),
+            Self::ApiFailed { api, status } => write!(f, "{api} failed: {status}"),
             Self::InvalidArgument(m) => write!(f, "invalid argument: {m}"),
         }
     }

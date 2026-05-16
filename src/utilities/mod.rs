@@ -7,6 +7,7 @@ use apple_cf::cv::CVPixelBuffer;
 
 use crate::error::VTError;
 use crate::ffi;
+use crate::session::Codec;
 
 /// Convert a `CVPixelBuffer` into a `CGImageRef`. The returned
 /// pointer is a retained `CGImageRef`; caller must `CFRelease` it
@@ -30,6 +31,13 @@ pub fn create_cg_image_from_pixel_buffer(
         return Err(VTError::EncodeFailed(s));
     }
     Ok(img)
+}
+
+/// Returns `true` when the current machine advertises hardware decode support
+/// for `codec`.
+#[must_use]
+pub fn is_hardware_decode_supported(codec: Codec) -> bool {
+    unsafe { ffi::VTIsHardwareDecodeSupported(codec.as_cm_codec_type()) != 0 }
 }
 
 /// Register Apple's professional-workflow video decoders (extra

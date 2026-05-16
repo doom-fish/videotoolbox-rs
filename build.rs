@@ -22,6 +22,8 @@ fn main() {
     println!("cargo:rustc-link-lib=framework=CoreFoundation");
 
     if env::var("CARGO_FEATURE_FRAME_PROCESSOR").is_ok() {
+        println!("cargo:rustc-link-lib=framework=Foundation");
+        println!("cargo:rustc-link-lib=framework=Metal");
         build_swift_bridge();
     }
 }

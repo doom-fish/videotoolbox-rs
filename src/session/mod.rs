@@ -1,5 +1,11 @@
 //! Video codecs supported by `VideoToolbox`.
 
+use core::ffi::c_void;
+use core::ptr;
+
+use apple_cf::cf::{CFDictionary, CFType};
+
+use crate::error::VTError;
 use crate::ffi;
 
 /// Video codec families. Maps to `CMVideoCodecType` four-character codes.
@@ -35,5 +41,78 @@ impl Codec {
             Self::ProRes422Proxy => ffi::kCMVideoCodecType_AppleProRes422Proxy,
             Self::ProRes4444 => ffi::kCMVideoCodecType_AppleProRes4444,
         }
+    }
+}
+
+pub(crate) unsafe fn copy_property(
+    session: *mut c_void,
+    key: ffi::CFStringRef,
+) -> Result<Option<CFType>, VTError> {
+    let mut value: *mut c_void = ptr::null_mut();
+    let status = unsafe {
+        ffi::VTSessionCopyProperty(
+            session,
+            key,
+            ffi::kCFAllocatorDefault,
+            (&raw mut value).cast(),
+        )
+    };
+    if status != 0 {
+        return Err(VTError::ApiFailed {
+            api: "VTSessionCopyProperty",
+            status,
+        });
+    }
+    Ok(CFType::from_raw(value))
+}
+
+pub(crate) unsafe fn copy_supported_property_dictionary(
+    session: *mut c_void,
+) -> Result<CFDictionary, VTError> {
+    let mut out: ffi::CFDictionaryRef = ptr::null();
+    let status = unsafe { ffi::VTSessionCopySupportedPropertyDictionary(session, &mut out) };
+    if status != 0 || out.is_null() {
+        return Err(VTError::ApiFailed {
+            api: "VTSessionCopySupportedPropertyDictionary",
+            status,
+        });
+    }
+    CFDictionary::from_raw(out.cast_mut()).ok_or(VTError::ApiFailed {
+        api: "VTSessionCopySupportedPropertyDictionary",
+        status,
+    })
+}
+
+pub(crate) unsafe fn copy_serializable_properties(
+    session: *mut c_void,
+) -> Result<CFDictionary, VTError> {
+    let mut out: ffi::CFDictionaryRef = ptr::null();
+    let status = unsafe {
+        ffi::VTSessionCopySerializableProperties(session, ffi::kCFAllocatorDefault, &mut out)
+    };
+    if status != 0 || out.is_null() {
+        return Err(VTError::ApiFailed {
+            api: "VTSessionCopySerializableProperties",
+            status,
+        });
+    }
+    CFDictionary::from_raw(out.cast_mut()).ok_or(VTError::ApiFailed {
+        api: "VTSessionCopySerializableProperties",
+        status,
+    })
+}
+
+pub(crate) unsafe fn set_properties(
+    session: *mut c_void,
+    properties: &CFDictionary,
+) -> Result<(), VTError> {
+    let status = unsafe { ffi::VTSessionSetProperties(session, properties.as_ptr().cast()) };
+    if status == 0 {
+        Ok(())
+    } else {
+        Err(VTError::ApiFailed {
+            api: "VTSessionSetProperties",
+            status,
+        })
     }
 }

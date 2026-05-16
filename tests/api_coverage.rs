@@ -9,8 +9,9 @@
 //! * **Unknown** — Symbol in our `extern "C"` block that doesn't exist in
 //!   the SDK headers. Always fails the test.
 //!
-//! See `tests/api_coverage.rs` in apple-cf-rs for the same harness shape;
-//! this version targets the encoder-only v0.1 surface of `videotoolbox`.
+//! See `tests/api_coverage.rs` in `apple-cf-rs` for the same harness shape.
+//! This file now audits the broader `videotoolbox` surface that the crate
+//! exposes directly from `src/ffi/mod.rs`.
 
 #![allow(clippy::cast_precision_loss, clippy::iter_on_single_items)]
 
@@ -136,15 +137,10 @@ fn extract_our_extern_fns() -> BTreeSet<String> {
 
 fn vt_compression_intentionally_omitted() -> BTreeSet<String> {
     [
-        // Decoder + multi-image + multi-pass — out of scope for v0.1 (encoder only).
+        // Public entry points we still intentionally skip in the safe layer.
         "VTCompressionSessionEncodeMultiImageFrame",
         "VTCompressionSessionEncodeMultiImageFrameWithOutputHandler",
         "VTCompressionSessionEncodeFrameWithOutputHandler",
-        "VTCompressionSessionGetPixelBufferPool",
-        "VTCompressionSessionBeginPass",
-        "VTCompressionSessionEndPass",
-        "VTCompressionSessionGetTimeRangesForNextPass",
-        "VTCompressionSessionGetTypeID",
         "VTIsStereoMVHEVCEncodeSupported",
     ]
     .into_iter()
@@ -152,9 +148,9 @@ fn vt_compression_intentionally_omitted() -> BTreeSet<String> {
     .collect()
 }
 
-/// 75 of the 82 compression property keys are out of scope for v0.1 (HDR
-/// metadata, ROI, low-latency mode, multi-pass, etc.). v0.1 focuses on the
-/// 7 most common knobs needed for live screen capture.
+/// Compression property keys that are still intentionally omitted from the
+/// safe API surface. The raw constants may exist in `src/ffi/mod.rs`, but this
+/// harness only requires typed coverage for the keys the crate actively wraps.
 fn vt_property_intentionally_omitted(apple: &BTreeSet<String>) -> BTreeSet<String> {
     let kept: BTreeSet<&str> = [
         "kVTCompressionPropertyKey_RealTime",
@@ -174,9 +170,8 @@ fn vt_property_intentionally_omitted(apple: &BTreeSet<String>) -> BTreeSet<Strin
         .collect()
 }
 
-/// Profile-level constants we DON'T wrap for v0.1 (we ship the 5 most-common
-/// ones — Baseline/Main/High `AutoLevel` for H.264 + Main/Main10 `AutoLevel` for
-/// HEVC). Compute by subtracting the kept set from Apple's set.
+/// Profile-level constants we still intentionally leave out of the typed
+/// `ProfileLevel` enum. Compute by subtracting the kept set from Apple's set.
 fn vt_profile_intentionally_omitted(apple: &BTreeSet<String>) -> BTreeSet<String> {
     let kept: BTreeSet<&str> = [
         "kVTProfileLevel_H264_Baseline_AutoLevel",
@@ -221,7 +216,7 @@ fn vt_compression_function_coverage() {
     );
     let ours: BTreeSet<String> = extract_our_extern_fns()
         .into_iter()
-        .filter(|n| n.starts_with("VTCompressionSession") || n.starts_with("VTIs"))
+        .filter(|n| n.starts_with("VTCompressionSession") || n == "VTIsStereoMVHEVCEncodeSupported")
         .collect();
 
     Report {
@@ -245,15 +240,7 @@ fn vt_session_set_property_function_coverage() {
         .filter(|n| n.starts_with("VTSession"))
         .collect();
 
-    let omitted: BTreeSet<String> = [
-        "VTSessionCopyProperty",
-        "VTSessionCopySupportedPropertyDictionary",
-        "VTSessionCopySerializableProperties",
-        "VTSessionSetProperties",
-    ]
-    .into_iter()
-    .map(String::from)
-    .collect();
+    let omitted = BTreeSet::new();
 
     Report {
         framework: "VTSession (functions)",

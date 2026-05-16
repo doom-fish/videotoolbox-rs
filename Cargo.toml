@@ -1,6 +1,6 @@
 [package]
 name = "videotoolbox"
-version = "0.10.1"
+version = "0.11.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/doom-fish/videotoolbox-rs"
@@ -45,11 +45,12 @@ decompression = []
 # Brings in a small Swift bridge so we can reach VTFrameProcessor (an
 # Objective-C-only API the pure-C FFI can't otherwise call). Off by default
 # so existing pure-C users don't pay for the `swift build` step.
-frame_processor = []
+frame_processor = ["dep:apple-metal"]
 all-features-flag = ["compression", "decompression", "frame_processor"]
 
 [dependencies]
-apple-cf = { path = "../apple-cf-rs", version = ">=0.2, <0.6", default-features = false, features = ["cm", "iosurface", "cv"] }
+apple-cf = { path = "../apple-cf-rs", version = ">=0.6, <0.7", default-features = false, features = ["cm", "iosurface", "cv"] }
+apple-metal = { path = "../apple-metal-rs", version = ">=0.6, <0.7", default-features = false, optional = true }
 
 [dev-dependencies]
 regex-lite = "0.1"

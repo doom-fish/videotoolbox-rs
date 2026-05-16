@@ -83,6 +83,8 @@ pub type CFNumberRef = *const c_void;
 pub type CFBooleanRef = *const c_void;
 pub type CFDictionaryRef = *const c_void;
 pub type CFMutableDictionaryRef = *mut c_void;
+pub type CFArrayRef = *const c_void;
+pub type CFURLRef = *const c_void;
 
 pub type CFNumberType = c_int;
 pub const kCFNumberSInt32Type: CFNumberType = 3;
@@ -147,6 +149,8 @@ extern "C" {
 pub type CMSampleBufferRef = *mut c_void;
 pub type CMBlockBufferRef = *mut c_void;
 pub type CMFormatDescriptionRef = *mut c_void;
+pub type CMItemCount = isize;
+pub type Boolean = u8;
 
 extern "C" {
     pub fn CMSampleBufferGetDataBuffer(sbuf: CMSampleBufferRef) -> CMBlockBufferRef;
@@ -166,6 +170,7 @@ extern "C" {
 // ---- CoreVideo: CVPixelBuffer (we only need create-with-IOSurface here) ----
 
 pub type CVPixelBufferRef = *mut c_void;
+pub type CVPixelBufferPoolRef = *mut c_void;
 pub type IOSurfaceRef = *mut c_void;
 
 extern "C" {
@@ -179,6 +184,7 @@ extern "C" {
 
 // ---- VideoToolbox: VTCompressionSession ----
 
+pub type VTSessionRef = *mut c_void;
 pub type VTCompressionSessionRef = *mut c_void;
 pub type VTEncodeInfoFlags = u32;
 
@@ -206,6 +212,10 @@ extern "C" {
     ) -> OSStatus;
 
     pub fn VTCompressionSessionInvalidate(session: VTCompressionSessionRef);
+    pub fn VTCompressionSessionGetTypeID() -> usize;
+    pub fn VTCompressionSessionGetPixelBufferPool(
+        session: VTCompressionSessionRef,
+    ) -> CVPixelBufferPoolRef;
 
     pub fn VTCompressionSessionPrepareToEncodeFrames(session: VTCompressionSessionRef) -> OSStatus;
 
@@ -223,11 +233,45 @@ extern "C" {
         session: VTCompressionSessionRef,
         complete_until_presentation_time_stamp: CMTime,
     ) -> OSStatus;
+    pub fn VTCompressionSessionBeginPass(
+        session: VTCompressionSessionRef,
+        begin_pass_flags: u32,
+        reserved: *mut u32,
+    ) -> OSStatus;
+    pub fn VTCompressionSessionEndPass(
+        session: VTCompressionSessionRef,
+        further_passes_requested_out: *mut Boolean,
+        reserved: *mut u32,
+    ) -> OSStatus;
+    pub fn VTCompressionSessionGetTimeRangesForNextPass(
+        session: VTCompressionSessionRef,
+        time_range_count_out: *mut CMItemCount,
+        time_range_array_out: *mut *const CMTimeRange,
+    ) -> OSStatus;
 
     pub fn VTSessionSetProperty(
-        session: VTCompressionSessionRef,
+        session: VTSessionRef,
         property_key: CFStringRef,
         property_value: CFTypeRef,
+    ) -> OSStatus;
+    pub fn VTSessionCopyProperty(
+        session: VTSessionRef,
+        property_key: CFStringRef,
+        allocator: CFAllocatorRef,
+        property_value_out: *mut c_void,
+    ) -> OSStatus;
+    pub fn VTSessionSetProperties(
+        session: VTSessionRef,
+        property_dictionary: CFDictionaryRef,
+    ) -> OSStatus;
+    pub fn VTSessionCopySerializableProperties(
+        session: VTSessionRef,
+        allocator: CFAllocatorRef,
+        dictionary_out: *mut CFDictionaryRef,
+    ) -> OSStatus;
+    pub fn VTSessionCopySupportedPropertyDictionary(
+        session: VTSessionRef,
+        supported_property_dictionary_out: *mut CFDictionaryRef,
     ) -> OSStatus;
 
     // Common compression property keys (declared as CFStringRef constants by the framework).
@@ -239,12 +283,67 @@ extern "C" {
     pub static kVTCompressionPropertyKey_ProfileLevel: CFStringRef;
     pub static kVTCompressionPropertyKey_H264EntropyMode: CFStringRef;
     pub static kVTCompressionPropertyKey_Quality: CFStringRef;
+    pub static kVTCompressionPropertyKey_ColorPrimaries: CFStringRef;
+    pub static kVTCompressionPropertyKey_TransferFunction: CFStringRef;
+    pub static kVTCompressionPropertyKey_YCbCrMatrix: CFStringRef;
+    pub static kVTCompressionPropertyKey_ICCProfile: CFStringRef;
+    pub static kVTCompressionPropertyKey_MultiPassStorage: CFStringRef;
 
+    pub static kVTProfileLevel_H263_Profile0_Level10: CFStringRef;
+    pub static kVTProfileLevel_H263_Profile0_Level45: CFStringRef;
+    pub static kVTProfileLevel_H263_Profile3_Level45: CFStringRef;
+    pub static kVTProfileLevel_H264_Baseline_1_3: CFStringRef;
+    pub static kVTProfileLevel_H264_Baseline_3_0: CFStringRef;
+    pub static kVTProfileLevel_H264_Baseline_3_1: CFStringRef;
+    pub static kVTProfileLevel_H264_Baseline_3_2: CFStringRef;
+    pub static kVTProfileLevel_H264_Baseline_4_0: CFStringRef;
+    pub static kVTProfileLevel_H264_Baseline_4_1: CFStringRef;
+    pub static kVTProfileLevel_H264_Baseline_4_2: CFStringRef;
+    pub static kVTProfileLevel_H264_Baseline_5_0: CFStringRef;
+    pub static kVTProfileLevel_H264_Baseline_5_1: CFStringRef;
+    pub static kVTProfileLevel_H264_Baseline_5_2: CFStringRef;
     pub static kVTProfileLevel_H264_Baseline_AutoLevel: CFStringRef;
-    pub static kVTProfileLevel_H264_Main_AutoLevel: CFStringRef;
+    pub static kVTProfileLevel_H264_ConstrainedBaseline_AutoLevel: CFStringRef;
+    pub static kVTProfileLevel_H264_ConstrainedHigh_AutoLevel: CFStringRef;
+    pub static kVTProfileLevel_H264_Extended_5_0: CFStringRef;
+    pub static kVTProfileLevel_H264_Extended_AutoLevel: CFStringRef;
+    pub static kVTProfileLevel_H264_High_3_0: CFStringRef;
+    pub static kVTProfileLevel_H264_High_3_1: CFStringRef;
+    pub static kVTProfileLevel_H264_High_3_2: CFStringRef;
+    pub static kVTProfileLevel_H264_High_4_0: CFStringRef;
+    pub static kVTProfileLevel_H264_High_4_1: CFStringRef;
+    pub static kVTProfileLevel_H264_High_4_2: CFStringRef;
+    pub static kVTProfileLevel_H264_High_5_0: CFStringRef;
+    pub static kVTProfileLevel_H264_High_5_1: CFStringRef;
+    pub static kVTProfileLevel_H264_High_5_2: CFStringRef;
     pub static kVTProfileLevel_H264_High_AutoLevel: CFStringRef;
+    pub static kVTProfileLevel_H264_Main_3_0: CFStringRef;
+    pub static kVTProfileLevel_H264_Main_3_1: CFStringRef;
+    pub static kVTProfileLevel_H264_Main_3_2: CFStringRef;
+    pub static kVTProfileLevel_H264_Main_4_0: CFStringRef;
+    pub static kVTProfileLevel_H264_Main_4_1: CFStringRef;
+    pub static kVTProfileLevel_H264_Main_4_2: CFStringRef;
+    pub static kVTProfileLevel_H264_Main_5_0: CFStringRef;
+    pub static kVTProfileLevel_H264_Main_5_1: CFStringRef;
+    pub static kVTProfileLevel_H264_Main_5_2: CFStringRef;
+    pub static kVTProfileLevel_H264_Main_AutoLevel: CFStringRef;
     pub static kVTProfileLevel_HEVC_Main_AutoLevel: CFStringRef;
     pub static kVTProfileLevel_HEVC_Main10_AutoLevel: CFStringRef;
+    pub static kVTProfileLevel_HEVC_Main42210_AutoLevel: CFStringRef;
+    pub static kVTProfileLevel_HEVC_Monochrome_AutoLevel: CFStringRef;
+    pub static kVTProfileLevel_HEVC_Monochrome10_AutoLevel: CFStringRef;
+    pub static kVTProfileLevel_MP4V_AdvancedSimple_L0: CFStringRef;
+    pub static kVTProfileLevel_MP4V_AdvancedSimple_L1: CFStringRef;
+    pub static kVTProfileLevel_MP4V_AdvancedSimple_L2: CFStringRef;
+    pub static kVTProfileLevel_MP4V_AdvancedSimple_L3: CFStringRef;
+    pub static kVTProfileLevel_MP4V_AdvancedSimple_L4: CFStringRef;
+    pub static kVTProfileLevel_MP4V_Main_L2: CFStringRef;
+    pub static kVTProfileLevel_MP4V_Main_L3: CFStringRef;
+    pub static kVTProfileLevel_MP4V_Main_L4: CFStringRef;
+    pub static kVTProfileLevel_MP4V_Simple_L0: CFStringRef;
+    pub static kVTProfileLevel_MP4V_Simple_L1: CFStringRef;
+    pub static kVTProfileLevel_MP4V_Simple_L2: CFStringRef;
+    pub static kVTProfileLevel_MP4V_Simple_L3: CFStringRef;
 
     pub static kVTH264EntropyMode_CABAC: CFStringRef;
     pub static kVTH264EntropyMode_CAVLC: CFStringRef;
@@ -260,6 +359,7 @@ extern "C" {
     ) -> OSStatus;
 
     pub fn VTDecompressionSessionInvalidate(session: VTDecompressionSessionRef);
+    pub fn VTDecompressionSessionGetTypeID() -> usize;
 
     pub fn VTDecompressionSessionDecodeFrame(
         session: VTDecompressionSessionRef,
@@ -281,9 +381,15 @@ extern "C" {
         session: VTDecompressionSessionRef,
         new_format_desc: CMFormatDescriptionRef,
     ) -> bool;
+    pub fn VTDecompressionSessionCopyBlackPixelBuffer(
+        session: VTDecompressionSessionRef,
+        pixel_buffer_out: *mut CVPixelBufferRef,
+    ) -> OSStatus;
+    pub fn VTIsHardwareDecodeSupported(codec_type: CMVideoCodecType) -> Boolean;
 
     pub static kVTDecompressionPropertyKey_RealTime: CFStringRef;
     pub static kVTDecompressionPropertyKey_MaximumOutputBufferDepth: CFStringRef;
+    pub static kVTDecompressionPropertyKey_UsingHardwareAcceleratedVideoDecoder: CFStringRef;
 
     // ---- VTPixelTransferSession (v0.6) ----
     pub fn VTPixelTransferSessionCreate(
@@ -291,11 +397,27 @@ extern "C" {
         pixel_transfer_session_out: *mut VTPixelTransferSessionRef,
     ) -> OSStatus;
     pub fn VTPixelTransferSessionInvalidate(session: VTPixelTransferSessionRef);
+    pub fn VTPixelTransferSessionGetTypeID() -> usize;
     pub fn VTPixelTransferSessionTransferImage(
         session: VTPixelTransferSessionRef,
         source_buffer: CVPixelBufferRef,
         destination_buffer: CVPixelBufferRef,
     ) -> OSStatus;
+    pub static kVTPixelTransferPropertyKey_ScalingMode: CFStringRef;
+    pub static kVTScalingMode_Normal: CFStringRef;
+    pub static kVTScalingMode_CropSourceToCleanAperture: CFStringRef;
+    pub static kVTScalingMode_Letterbox: CFStringRef;
+    pub static kVTScalingMode_Trim: CFStringRef;
+    pub static kVTPixelTransferPropertyKey_DestinationCleanAperture: CFStringRef;
+    pub static kVTPixelTransferPropertyKey_DestinationPixelAspectRatio: CFStringRef;
+    pub static kVTPixelTransferPropertyKey_DownsamplingMode: CFStringRef;
+    pub static kVTDownsamplingMode_Decimate: CFStringRef;
+    pub static kVTDownsamplingMode_Average: CFStringRef;
+    pub static kVTPixelTransferPropertyKey_DestinationColorPrimaries: CFStringRef;
+    pub static kVTPixelTransferPropertyKey_DestinationTransferFunction: CFStringRef;
+    pub static kVTPixelTransferPropertyKey_DestinationICCProfile: CFStringRef;
+    pub static kVTPixelTransferPropertyKey_DestinationYCbCrMatrix: CFStringRef;
+    pub static kVTPixelTransferPropertyKey_RealTime: CFStringRef;
 
     // ---- VTPixelRotationSession (v0.6) ----
     pub fn VTPixelRotationSessionCreate(
@@ -303,6 +425,7 @@ extern "C" {
         pixel_rotation_session_out: *mut VTPixelRotationSessionRef,
     ) -> OSStatus;
     pub fn VTPixelRotationSessionInvalidate(session: VTPixelRotationSessionRef);
+    pub fn VTPixelRotationSessionGetTypeID() -> usize;
     pub fn VTPixelRotationSessionRotateImage(
         session: VTPixelRotationSessionRef,
         source_buffer: CVPixelBufferRef,
@@ -327,6 +450,7 @@ extern "C" {
     pub static kVTVideoEncoderList_DisplayName: CFStringRef;
 
     // ---- VTFrameSilo (v0.9) ----
+    pub fn VTFrameSiloGetTypeID() -> usize;
     pub fn VTFrameSiloCreate(
         allocator: CFAllocatorRef,
         file_url: *const c_void,
@@ -342,8 +466,20 @@ extern "C" {
         silo: VTFrameSiloRef,
         progress_out: *mut f32,
     ) -> OSStatus;
+    pub fn VTFrameSiloSetTimeRangesForNextPass(
+        silo: VTFrameSiloRef,
+        time_range_count: CMItemCount,
+        time_range_array: *const CMTimeRange,
+    ) -> OSStatus;
+    pub fn VTFrameSiloCallFunctionForEachSampleBuffer(
+        silo: VTFrameSiloRef,
+        time_range: CMTimeRange,
+        refcon: *mut c_void,
+        callback: Option<unsafe extern "C" fn(*mut c_void, CMSampleBufferRef) -> OSStatus>,
+    ) -> OSStatus;
 
     // ---- VTMultiPassStorage (v0.9) ----
+    pub fn VTMultiPassStorageGetTypeID() -> usize;
     pub fn VTMultiPassStorageCreate(
         allocator: CFAllocatorRef,
         file_url: *const c_void,
@@ -351,6 +487,7 @@ extern "C" {
         options: CFDictionaryRef,
         storage_out: *mut VTMultiPassStorageRef,
     ) -> OSStatus;
+    pub static kVTMultiPassStorageCreationOption_DoNotDelete: CFStringRef;
     pub fn VTMultiPassStorageClose(storage: VTMultiPassStorageRef) -> OSStatus;
 
     // ---- VTHDRPerFrameMetadataGenerationSession (v0.9) ----
@@ -437,7 +574,6 @@ extern "C" {
     pub static kVTRAWProcessingParameter_CurrentValue: CFStringRef;
 }
 
-pub type CFArrayRef = *const c_void;
 pub type VTFrameSiloRef = *mut c_void;
 pub type VTMultiPassStorageRef = *mut c_void;
 pub type VTHDRPerFrameMetadataGenerationSessionRef = *mut c_void;

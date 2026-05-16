@@ -6,11 +6,14 @@ use std::ffi::CString;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
+use apple_cf::cf::{CFDictionary, CFType};
+use apple_cf::cv::CVPixelBufferPool;
 use apple_cf::iosurface::IOSurface;
 
 use crate::error::VTError;
 use crate::ffi;
-use crate::session::Codec;
+use crate::multipass::MultiPassStorage;
+use crate::session::{self, Codec};
 
 /// One encoded frame produced by [`CompressionSession::encode`].
 ///
@@ -104,30 +107,88 @@ pub struct CompressionSessionBuilder {
     profile_level: Option<ProfileLevel>,
 }
 
-/// Encoded profile/level for the underlying codec. Maps to
-/// `kVTProfileLevel_*` `CFStringRef` constants.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum ProfileLevel {
-    H264BaselineAutoLevel,
-    H264MainAutoLevel,
-    H264HighAutoLevel,
-    HEVCMainAutoLevel,
-    HEVCMain10AutoLevel,
-}
+macro_rules! define_profile_levels {
+    ($($variant:ident => $ffi_const:ident),+ $(,)?) => {
+        /// Encoded profile/level for the underlying codec. Maps to
+        /// `kVTProfileLevel_*` `CFStringRef` constants.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        #[non_exhaustive]
+        pub enum ProfileLevel {
+            $(
+                $variant,
+            )+
+        }
 
-impl ProfileLevel {
-    pub(crate) fn as_cf_string(self) -> ffi::CFStringRef {
-        unsafe {
-            match self {
-                Self::H264BaselineAutoLevel => ffi::kVTProfileLevel_H264_Baseline_AutoLevel,
-                Self::H264MainAutoLevel => ffi::kVTProfileLevel_H264_Main_AutoLevel,
-                Self::H264HighAutoLevel => ffi::kVTProfileLevel_H264_High_AutoLevel,
-                Self::HEVCMainAutoLevel => ffi::kVTProfileLevel_HEVC_Main_AutoLevel,
-                Self::HEVCMain10AutoLevel => ffi::kVTProfileLevel_HEVC_Main10_AutoLevel,
+        impl ProfileLevel {
+            pub(crate) fn as_cf_string(self) -> ffi::CFStringRef {
+                unsafe {
+                    match self {
+                        $(
+                            Self::$variant => ffi::$ffi_const,
+                        )+
+                    }
+                }
             }
         }
-    }
+    };
+}
+
+define_profile_levels! {
+    H263Profile0Level10 => kVTProfileLevel_H263_Profile0_Level10,
+    H263Profile0Level45 => kVTProfileLevel_H263_Profile0_Level45,
+    H263Profile3Level45 => kVTProfileLevel_H263_Profile3_Level45,
+    H264Baseline1_3 => kVTProfileLevel_H264_Baseline_1_3,
+    H264Baseline3_0 => kVTProfileLevel_H264_Baseline_3_0,
+    H264Baseline3_1 => kVTProfileLevel_H264_Baseline_3_1,
+    H264Baseline3_2 => kVTProfileLevel_H264_Baseline_3_2,
+    H264Baseline4_0 => kVTProfileLevel_H264_Baseline_4_0,
+    H264Baseline4_1 => kVTProfileLevel_H264_Baseline_4_1,
+    H264Baseline4_2 => kVTProfileLevel_H264_Baseline_4_2,
+    H264Baseline5_0 => kVTProfileLevel_H264_Baseline_5_0,
+    H264Baseline5_1 => kVTProfileLevel_H264_Baseline_5_1,
+    H264Baseline5_2 => kVTProfileLevel_H264_Baseline_5_2,
+    H264BaselineAutoLevel => kVTProfileLevel_H264_Baseline_AutoLevel,
+    H264ConstrainedBaselineAutoLevel => kVTProfileLevel_H264_ConstrainedBaseline_AutoLevel,
+    H264ConstrainedHighAutoLevel => kVTProfileLevel_H264_ConstrainedHigh_AutoLevel,
+    H264Extended5_0 => kVTProfileLevel_H264_Extended_5_0,
+    H264ExtendedAutoLevel => kVTProfileLevel_H264_Extended_AutoLevel,
+    H264High3_0 => kVTProfileLevel_H264_High_3_0,
+    H264High3_1 => kVTProfileLevel_H264_High_3_1,
+    H264High3_2 => kVTProfileLevel_H264_High_3_2,
+    H264High4_0 => kVTProfileLevel_H264_High_4_0,
+    H264High4_1 => kVTProfileLevel_H264_High_4_1,
+    H264High4_2 => kVTProfileLevel_H264_High_4_2,
+    H264High5_0 => kVTProfileLevel_H264_High_5_0,
+    H264High5_1 => kVTProfileLevel_H264_High_5_1,
+    H264High5_2 => kVTProfileLevel_H264_High_5_2,
+    H264HighAutoLevel => kVTProfileLevel_H264_High_AutoLevel,
+    H264Main3_0 => kVTProfileLevel_H264_Main_3_0,
+    H264Main3_1 => kVTProfileLevel_H264_Main_3_1,
+    H264Main3_2 => kVTProfileLevel_H264_Main_3_2,
+    H264Main4_0 => kVTProfileLevel_H264_Main_4_0,
+    H264Main4_1 => kVTProfileLevel_H264_Main_4_1,
+    H264Main4_2 => kVTProfileLevel_H264_Main_4_2,
+    H264Main5_0 => kVTProfileLevel_H264_Main_5_0,
+    H264Main5_1 => kVTProfileLevel_H264_Main_5_1,
+    H264Main5_2 => kVTProfileLevel_H264_Main_5_2,
+    H264MainAutoLevel => kVTProfileLevel_H264_Main_AutoLevel,
+    HEVCMainAutoLevel => kVTProfileLevel_HEVC_Main_AutoLevel,
+    HEVCMain10AutoLevel => kVTProfileLevel_HEVC_Main10_AutoLevel,
+    HEVCMain42210AutoLevel => kVTProfileLevel_HEVC_Main42210_AutoLevel,
+    HEVCMonochromeAutoLevel => kVTProfileLevel_HEVC_Monochrome_AutoLevel,
+    HEVCMonochrome10AutoLevel => kVTProfileLevel_HEVC_Monochrome10_AutoLevel,
+    MP4VAdvancedSimpleL0 => kVTProfileLevel_MP4V_AdvancedSimple_L0,
+    MP4VAdvancedSimpleL1 => kVTProfileLevel_MP4V_AdvancedSimple_L1,
+    MP4VAdvancedSimpleL2 => kVTProfileLevel_MP4V_AdvancedSimple_L2,
+    MP4VAdvancedSimpleL3 => kVTProfileLevel_MP4V_AdvancedSimple_L3,
+    MP4VAdvancedSimpleL4 => kVTProfileLevel_MP4V_AdvancedSimple_L4,
+    MP4VMainL2 => kVTProfileLevel_MP4V_Main_L2,
+    MP4VMainL3 => kVTProfileLevel_MP4V_Main_L3,
+    MP4VMainL4 => kVTProfileLevel_MP4V_Main_L4,
+    MP4VSimpleL0 => kVTProfileLevel_MP4V_Simple_L0,
+    MP4VSimpleL1 => kVTProfileLevel_MP4V_Simple_L1,
+    MP4VSimpleL2 => kVTProfileLevel_MP4V_Simple_L2,
+    MP4VSimpleL3 => kVTProfileLevel_MP4V_Simple_L3,
 }
 
 impl CompressionSessionBuilder {
@@ -241,6 +302,154 @@ impl CompressionSession {
     #[must_use]
     pub const fn builder(width: i32, height: i32, codec: Codec) -> CompressionSessionBuilder {
         CompressionSessionBuilder::new(width, height, codec)
+    }
+
+    /// CoreFoundation type identifier for `VTCompressionSession`.
+    #[must_use]
+    pub fn type_id() -> usize {
+        unsafe { ffi::VTCompressionSessionGetTypeID() }
+    }
+
+    /// Returns the current source-pixel-buffer pool, retaining it so the
+    /// returned wrapper owns its lifetime independently of the session.
+    #[must_use]
+    pub fn pixel_buffer_pool(&self) -> Option<CVPixelBufferPool> {
+        let pool = unsafe { ffi::VTCompressionSessionGetPixelBufferPool(self.session) };
+        if pool.is_null() {
+            return None;
+        }
+        unsafe { ffi::CFRetain(pool.cast()) };
+        CVPixelBufferPool::from_raw(pool.cast())
+    }
+
+    /// Copy one `VTSession` property from the encoder.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the underlying property query fails.
+    ///
+    /// # Safety
+    ///
+    /// `key` must be a valid CoreFoundation string pointer accepted by
+    /// `VTSessionCopyProperty` for a compression session.
+    pub unsafe fn copy_property(&self, key: ffi::CFStringRef) -> Result<Option<CFType>, VTError> {
+        session::copy_property(self.session.cast(), key)
+    }
+
+    /// Copy the encoder's supported-property dictionary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the query fails.
+    pub fn supported_property_dictionary(&self) -> Result<CFDictionary, VTError> {
+        unsafe { session::copy_supported_property_dictionary(self.session.cast()) }
+    }
+
+    /// Copy the encoder's serializable property dictionary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the query fails.
+    pub fn serializable_properties(&self) -> Result<CFDictionary, VTError> {
+        unsafe { session::copy_serializable_properties(self.session.cast()) }
+    }
+
+    /// Set multiple encoder properties at once.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if `VideoToolbox` rejects the dictionary.
+    pub fn set_properties(&self, properties: &CFDictionary) -> Result<(), VTError> {
+        unsafe { session::set_properties(self.session.cast(), properties) }
+    }
+
+    /// Attach a [`MultiPassStorage`] object so the session can do multi-pass
+    /// encoding.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::SetPropertyFailed`] if `VideoToolbox` rejects the
+    /// storage object.
+    pub fn set_multi_pass_storage(&self, storage: &MultiPassStorage) -> Result<(), VTError> {
+        unsafe {
+            self.set_property(
+                ffi::kVTCompressionPropertyKey_MultiPassStorage,
+                storage.as_ptr().cast(),
+            )
+        }
+    }
+
+    /// Begin a multi-pass encoding pass.
+    ///
+    /// Set `final_pass` when you know this must be the last pass.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] on a non-zero `OSStatus`.
+    pub fn begin_pass(&self, final_pass: bool) -> Result<(), VTError> {
+        let flags = u32::from(final_pass);
+        let status =
+            unsafe { ffi::VTCompressionSessionBeginPass(self.session, flags, ptr::null_mut()) };
+        if status == 0 {
+            Ok(())
+        } else {
+            Err(VTError::ApiFailed {
+                api: "VTCompressionSessionBeginPass",
+                status,
+            })
+        }
+    }
+
+    /// End the current multi-pass encoding pass.
+    ///
+    /// Returns `true` when the encoder requests another pass.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] on a non-zero `OSStatus`.
+    pub fn end_pass(&self) -> Result<bool, VTError> {
+        let mut further_passes_requested: ffi::Boolean = 0;
+        let status = unsafe {
+            ffi::VTCompressionSessionEndPass(
+                self.session,
+                (&raw mut further_passes_requested).cast(),
+                ptr::null_mut(),
+            )
+        };
+        if status == 0 {
+            Ok(further_passes_requested != 0)
+        } else {
+            Err(VTError::ApiFailed {
+                api: "VTCompressionSessionEndPass",
+                status,
+            })
+        }
+    }
+
+    /// Return the time ranges the encoder wants on the next multi-pass pass.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] on a non-zero `OSStatus`.
+    pub fn time_ranges_for_next_pass(&self) -> Result<Vec<ffi::CMTimeRange>, VTError> {
+        let mut count: ffi::CMItemCount = 0;
+        let mut ranges: *const ffi::CMTimeRange = ptr::null();
+        let status = unsafe {
+            ffi::VTCompressionSessionGetTimeRangesForNextPass(self.session, &mut count, &mut ranges)
+        };
+        if status != 0 {
+            return Err(VTError::ApiFailed {
+                api: "VTCompressionSessionGetTimeRangesForNextPass",
+                status,
+            });
+        }
+        if count <= 0 || ranges.is_null() {
+            return Ok(Vec::new());
+        }
+        let count = usize::try_from(count).map_err(|_| {
+            VTError::InvalidArgument("time-range count overflowed usize".to_string())
+        })?;
+        Ok(unsafe { std::slice::from_raw_parts(ranges, count) }.to_vec())
     }
 
     fn new_internal(b: &CompressionSessionBuilder) -> Result<Self, VTError> {

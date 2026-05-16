@@ -6,11 +6,12 @@
 //!
 //! Safe, **zero-runtime-dependency** Rust bindings for Apple's
 //! [VideoToolbox](https://developer.apple.com/documentation/videotoolbox)
-//! framework — hardware-accelerated H.264, HEVC, and ProRes codecs on macOS.
+//! framework — hardware-accelerated H.264, HEVC, and `ProRes` codecs on macOS.
 //!
-//! Unlike the rest of the doom-fish suite, `VideoToolbox` is a pure C framework,
-//! so this crate does **not** ship a Swift bridge — all bindings are direct
-//! `extern "C"` declarations against the system framework.
+//! Most of the crate uses direct `extern "C"` bindings against the system
+//! framework. Objective-C-only / async APIs (notably `VTFrameProcessor`,
+//! `VTMotionEstimationSession`, and `VTRAWProcessingSession`) use a small Swift
+//! bridge behind the `frame_processor` feature.
 //!
 //! # Quick start
 //!
@@ -60,21 +61,28 @@ pub mod motion_estimation;
 #[cfg_attr(docsrs, doc(cfg(feature = "frame_processor")))]
 pub mod raw_processing;
 
+pub use decompression::{DecodedFrame, DecompressionSession};
 pub use encoder_list::{available_video_encoders, VideoEncoder};
 pub use error::VTError;
 pub use hdr_metadata::HdrMetadataSession;
 pub use multipass::{FrameSilo, MultiPassStorage};
 pub use session::Codec;
-pub use transfer::{PixelRotationSession, PixelTransferSession, Rotation};
+pub use transfer::{
+    DownsamplingMode, PixelRotationSession, PixelTransferSession, Rotation, ScalingMode,
+};
 pub use utilities::{
-    create_cg_image_from_pixel_buffer, register_professional_workflow_decoders,
-    register_professional_workflow_encoders,
+    create_cg_image_from_pixel_buffer, is_hardware_decode_supported,
+    register_professional_workflow_decoders, register_professional_workflow_encoders,
 };
 
 #[cfg(feature = "frame_processor")]
 pub use frame_processor::{
-    frame_processor_capabilities, super_resolution_supported_scale_factors, FrameProcessor,
-    FrameProcessorCapabilities,
+    download_super_resolution_model, frame_processor_capabilities,
+    low_latency_super_resolution_supported_scale_factors,
+    super_resolution_model_percentage_available, super_resolution_model_status,
+    super_resolution_supported_scale_factors, FrameProcessor, FrameProcessorCapabilities,
+    FrameProcessorFrame, FrameProcessorOpticalFlow, FrameProcessorSubmissionMode,
+    FrameRateConversionSubmissionMode, SuperResolutionModelStatus,
 };
 #[cfg(feature = "frame_processor")]
 pub use motion_estimation::MotionEstimationSession;
@@ -82,7 +90,7 @@ pub use motion_estimation::MotionEstimationSession;
 pub use raw_processing::{RawProcessingParameter, RawProcessingSession};
 
 #[cfg(feature = "compression")]
-pub use compression::{CompressionSession, CompressionSessionBuilder, EncodedFrame};
+pub use compression::{CompressionSession, CompressionSessionBuilder, EncodedFrame, ProfileLevel};
 
 /// Common imports for users of this crate.
 pub mod prelude {

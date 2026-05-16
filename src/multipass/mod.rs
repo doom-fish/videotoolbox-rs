@@ -32,6 +32,12 @@ impl Drop for FrameSilo {
 }
 
 impl FrameSilo {
+    /// CoreFoundation type identifier for `VTFrameSilo`.
+    #[must_use]
+    pub fn type_id() -> usize {
+        unsafe { ffi::VTFrameSiloGetTypeID() }
+    }
+
     /// Create an in-memory frame silo.
     ///
     /// # Errors
@@ -87,6 +93,60 @@ impl FrameSilo {
         }
     }
 
+    /// Replace the time ranges used for the next pass.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] on a non-zero `OSStatus`.
+    pub fn set_time_ranges_for_next_pass(
+        &self,
+        time_ranges: &[ffi::CMTimeRange],
+    ) -> Result<(), VTError> {
+        let count = ffi::CMItemCount::try_from(time_ranges.len()).map_err(|_| {
+            VTError::InvalidArgument("time range count overflowed CMItemCount".to_string())
+        })?;
+        let status = unsafe {
+            ffi::VTFrameSiloSetTimeRangesForNextPass(self.inner, count, time_ranges.as_ptr())
+        };
+        if status == 0 {
+            Ok(())
+        } else {
+            Err(VTError::ApiFailed {
+                api: "VTFrameSiloSetTimeRangesForNextPass",
+                status,
+            })
+        }
+    }
+
+    /// Collect all sample buffers in `time_range` (or the whole silo when
+    /// `None`). Returned sample buffers are retained for the caller.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] on a non-zero `OSStatus`.
+    pub fn sample_buffers(
+        &self,
+        time_range: Option<ffi::CMTimeRange>,
+    ) -> Result<Vec<CMSampleBuffer>, VTError> {
+        let mut samples = Vec::new();
+        let status = unsafe {
+            ffi::VTFrameSiloCallFunctionForEachSampleBuffer(
+                self.inner,
+                time_range.unwrap_or(ffi::CMTimeRange::INVALID),
+                (&raw mut samples).cast(),
+                Some(frame_silo_collect_sample_buffer),
+            )
+        };
+        if status == 0 {
+            Ok(samples)
+        } else {
+            Err(VTError::ApiFailed {
+                api: "VTFrameSiloCallFunctionForEachSampleBuffer",
+                status,
+            })
+        }
+    }
+
     /// Raw `VTFrameSiloRef`.
     #[must_use]
     pub const fn as_ptr(&self) -> ffi::VTFrameSiloRef {
@@ -116,6 +176,12 @@ impl Drop for MultiPassStorage {
 }
 
 impl MultiPassStorage {
+    /// CoreFoundation type identifier for `VTMultiPassStorage`.
+    #[must_use]
+    pub fn type_id() -> usize {
+        unsafe { ffi::VTMultiPassStorageGetTypeID() }
+    }
+
     /// Create a new multi-pass storage backed by a temp file.
     ///
     /// # Errors
@@ -138,6 +204,23 @@ impl MultiPassStorage {
         Ok(Self { inner: p })
     }
 
+    /// Flush pending data and close the backing storage file.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] on a non-zero `OSStatus`.
+    pub fn close(&self) -> Result<(), VTError> {
+        let status = unsafe { ffi::VTMultiPassStorageClose(self.inner) };
+        if status == 0 {
+            Ok(())
+        } else {
+            Err(VTError::ApiFailed {
+                api: "VTMultiPassStorageClose",
+                status,
+            })
+        }
+    }
+
     /// Raw `VTMultiPassStorageRef` — pass to a
     /// `CompressionSession::set_property` with
     /// `kVTCompressionPropertyKey_MultiPassStorage`.
@@ -145,4 +228,18 @@ impl MultiPassStorage {
     pub const fn as_ptr(&self) -> ffi::VTMultiPassStorageRef {
         self.inner
     }
+}
+
+unsafe extern "C" fn frame_silo_collect_sample_buffer(
+    refcon: *mut c_void,
+    sample_buffer: ffi::CMSampleBufferRef,
+) -> ffi::OSStatus {
+    let Some(samples) = (unsafe { refcon.cast::<Vec<CMSampleBuffer>>().as_mut() }) else {
+        return -1;
+    };
+    let Some(sample) = apple_cf::cm::CMSampleBuffer::from_raw_retained(sample_buffer) else {
+        return -1;
+    };
+    samples.push(sample);
+    0
 }

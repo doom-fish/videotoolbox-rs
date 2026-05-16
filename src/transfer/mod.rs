@@ -15,10 +15,12 @@
 use core::ffi::c_void;
 use core::ptr;
 
+use apple_cf::cf::{CFDictionary, CFType};
 use apple_cf::cv::CVPixelBuffer;
 
 use crate::error::VTError;
 use crate::ffi;
+use crate::session;
 
 /// `kVTRotation_*` enum values, mapped to a Rust enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,6 +39,46 @@ impl Rotation {
                 Self::Clockwise90 => ffi::kVTRotation_CW90,
                 Self::Half180 => ffi::kVTRotation_180,
                 Self::CounterClockwise90 => ffi::kVTRotation_CCW90,
+            }
+        }
+    }
+}
+
+/// `kVTScalingMode_*` values for `VTPixelTransferSession`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScalingMode {
+    Normal,
+    CropSourceToCleanAperture,
+    Letterbox,
+    Trim,
+}
+
+impl ScalingMode {
+    fn as_cf_string(self) -> ffi::CFStringRef {
+        unsafe {
+            match self {
+                Self::Normal => ffi::kVTScalingMode_Normal,
+                Self::CropSourceToCleanAperture => ffi::kVTScalingMode_CropSourceToCleanAperture,
+                Self::Letterbox => ffi::kVTScalingMode_Letterbox,
+                Self::Trim => ffi::kVTScalingMode_Trim,
+            }
+        }
+    }
+}
+
+/// `kVTDownsamplingMode_*` values for `VTPixelTransferSession`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DownsamplingMode {
+    Decimate,
+    Average,
+}
+
+impl DownsamplingMode {
+    fn as_cf_string(self) -> ffi::CFStringRef {
+        unsafe {
+            match self {
+                Self::Decimate => ffi::kVTDownsamplingMode_Decimate,
+                Self::Average => ffi::kVTDownsamplingMode_Average,
             }
         }
     }
@@ -64,6 +106,12 @@ impl Drop for PixelTransferSession {
 }
 
 impl PixelTransferSession {
+    /// CoreFoundation type identifier for `VTPixelTransferSession`.
+    #[must_use]
+    pub fn type_id() -> usize {
+        unsafe { ffi::VTPixelTransferSessionGetTypeID() }
+    }
+
     /// Create a new pixel transfer session.
     ///
     /// # Errors
@@ -77,6 +125,91 @@ impl PixelTransferSession {
             return Err(VTError::SessionCreateFailed(status));
         }
         Ok(Self { session })
+    }
+
+    /// Copy one `VTSession` property from the transfer session.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the query fails.
+    ///
+    /// # Safety
+    ///
+    /// `key` must be a valid CoreFoundation string pointer accepted by
+    /// `VTSessionCopyProperty` for a pixel-transfer session.
+    pub unsafe fn copy_property(&self, key: ffi::CFStringRef) -> Result<Option<CFType>, VTError> {
+        session::copy_property(self.session.cast(), key)
+    }
+
+    /// Copy the transfer session's supported-property dictionary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the query fails.
+    pub fn supported_property_dictionary(&self) -> Result<CFDictionary, VTError> {
+        unsafe { session::copy_supported_property_dictionary(self.session.cast()) }
+    }
+
+    /// Copy the transfer session's serializable property dictionary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the query fails.
+    pub fn serializable_properties(&self) -> Result<CFDictionary, VTError> {
+        unsafe { session::copy_serializable_properties(self.session.cast()) }
+    }
+
+    /// Set multiple transfer properties at once.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if `VideoToolbox` rejects the dictionary.
+    pub fn set_properties(&self, properties: &CFDictionary) -> Result<(), VTError> {
+        unsafe { session::set_properties(self.session.cast(), properties) }
+    }
+
+    /// Set the scaling mode used by [`Self::transfer`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::SetPropertyFailed`] on rejection.
+    pub fn set_scaling_mode(&self, mode: ScalingMode) -> Result<(), VTError> {
+        unsafe {
+            self.set_property(
+                ffi::kVTPixelTransferPropertyKey_ScalingMode,
+                mode.as_cf_string().cast(),
+            )
+        }
+    }
+
+    /// Set the downsampling mode used by [`Self::transfer`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::SetPropertyFailed`] on rejection.
+    pub fn set_downsampling_mode(&self, mode: DownsamplingMode) -> Result<(), VTError> {
+        unsafe {
+            self.set_property(
+                ffi::kVTPixelTransferPropertyKey_DownsamplingMode,
+                mode.as_cf_string().cast(),
+            )
+        }
+    }
+
+    /// Mark the transfer session as real-time.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::SetPropertyFailed`] on rejection.
+    pub fn set_real_time(&self, real_time: bool) -> Result<(), VTError> {
+        let cf_value = unsafe {
+            if real_time {
+                ffi::kCFBooleanTrue
+            } else {
+                ffi::kCFBooleanFalse
+            }
+        };
+        unsafe { self.set_property(ffi::kVTPixelTransferPropertyKey_RealTime, cf_value.cast()) }
     }
 
     /// Copy + convert pixels from `src` into `dst`. The destination's
@@ -149,6 +282,12 @@ impl Drop for PixelRotationSession {
 }
 
 impl PixelRotationSession {
+    /// CoreFoundation type identifier for `VTPixelRotationSession`.
+    #[must_use]
+    pub fn type_id() -> usize {
+        unsafe { ffi::VTPixelRotationSessionGetTypeID() }
+    }
+
     /// Create a new pixel rotation session.
     ///
     /// # Errors
@@ -162,6 +301,47 @@ impl PixelRotationSession {
             return Err(VTError::SessionCreateFailed(status));
         }
         Ok(Self { session })
+    }
+
+    /// Copy one `VTSession` property from the rotation session.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the query fails.
+    ///
+    /// # Safety
+    ///
+    /// `key` must be a valid CoreFoundation string pointer accepted by
+    /// `VTSessionCopyProperty` for a pixel-rotation session.
+    pub unsafe fn copy_property(&self, key: ffi::CFStringRef) -> Result<Option<CFType>, VTError> {
+        session::copy_property(self.session.cast(), key)
+    }
+
+    /// Copy the rotation session's supported-property dictionary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the query fails.
+    pub fn supported_property_dictionary(&self) -> Result<CFDictionary, VTError> {
+        unsafe { session::copy_supported_property_dictionary(self.session.cast()) }
+    }
+
+    /// Copy the rotation session's serializable property dictionary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the query fails.
+    pub fn serializable_properties(&self) -> Result<CFDictionary, VTError> {
+        unsafe { session::copy_serializable_properties(self.session.cast()) }
+    }
+
+    /// Set multiple rotation properties at once.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if `VideoToolbox` rejects the dictionary.
+    pub fn set_properties(&self, properties: &CFDictionary) -> Result<(), VTError> {
+        unsafe { session::set_properties(self.session.cast(), properties) }
     }
 
     /// Configure the rotation applied by [`Self::rotate`]. Wraps

@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-05-16
+
+### Added
+
+- `FrameProcessorFrame` and `FrameProcessorOpticalFlow` wrappers for the
+  public `VTFrameProcessorFrame` / `VTFrameProcessorOpticalFlow` classes,
+  including IOSurface-backed validation on construction.
+- Full `VTFrameProcessor` submission helpers for all supported pipelines:
+  super-resolution, motion blur, temporal noise filter, frame-rate
+  conversion, low-latency super-resolution, low-latency frame
+  interpolation, and optical flow.
+- Metal command-buffer integration for `VTFrameProcessor` via
+  `apple-metal`, so callers can queue work with
+  `process_*_with_command_buffer` and synchronize on an existing
+  `MTLCommandBuffer`.
+- Runtime queries for super-resolution model status / download progress and
+  low-latency super-resolution supported scale factors.
+- Additional safe wrappers around `VTSession`, compression, decompression,
+  pixel-transfer, pixel-rotation, frame-silo, and multi-pass storage entry
+  points that were already public in Apple's headers.
+
+### Changed
+
+- Updated `apple-cf` / `apple-metal` dependency ranges to track the local
+  `0.6.x` crates used by the rest of the doom-fish stack.
+- Reworked the frame-processor examples to submit real frames instead of
+  only starting sessions.
+- Refreshed crate docs and exports to reflect the optional Swift bridge and
+  broader public API surface.
+
 ## [0.10.0] - 2026-05-16
 
 ### Added
