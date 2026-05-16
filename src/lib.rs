@@ -40,6 +40,7 @@
 pub mod error;
 pub mod ffi;
 pub mod session;
+pub mod tagged_buffer_group;
 
 #[cfg(feature = "compression")]
 #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
@@ -61,12 +62,17 @@ pub mod motion_estimation;
 #[cfg_attr(docsrs, doc(cfg(feature = "frame_processor")))]
 pub mod raw_processing;
 
-pub use decompression::{DecodedFrame, DecompressionSession};
-pub use encoder_list::{available_video_encoders, VideoEncoder};
+pub use decompression::{DecodedFrame, DecodedMultiImageFrame, DecompressionSession};
+pub use encoder_list::{
+    available_video_encoder_details, available_video_encoder_details_with_options,
+    available_video_encoders, supported_property_dictionary_for_encoder,
+    EncoderSupportedProperties, VideoEncoder, VideoEncoderDetails, VideoEncoderListOptions,
+};
 pub use error::VTError;
 pub use hdr_metadata::HdrMetadataSession;
 pub use multipass::{FrameSilo, MultiPassStorage};
 pub use session::Codec;
+pub use tagged_buffer_group::TaggedBufferGroup;
 pub use transfer::{
     DownsamplingMode, PixelRotationSession, PixelTransferSession, Rotation, ScalingMode,
 };

@@ -73,6 +73,16 @@ pub const kCMVideoCodecType_AppleProRes4444: CMVideoCodecType = u32::from_be_byt
 // VTEncodeInfoFlags (returned via the encode callback)
 pub const kVTEncodeInfo_Asynchronous: u32 = 1;
 pub const kVTEncodeInfo_FrameDropped: u32 = 1 << 1;
+pub const kVTCompressionSessionBeginFinalPass: VTCompressionSessionOptionFlags = 1 << 0;
+pub const kVTDecodeFrame_EnableAsynchronousDecompression: VTDecodeFrameFlags = 1 << 0;
+pub const kVTDecodeFrame_DoNotOutputFrame: VTDecodeFrameFlags = 1 << 1;
+pub const kVTDecodeFrame_1xRealTimePlayback: VTDecodeFrameFlags = 1 << 2;
+pub const kVTDecodeFrame_EnableTemporalProcessing: VTDecodeFrameFlags = 1 << 3;
+pub const kVTDecodeInfo_Asynchronous: VTDecodeInfoFlags = 1 << 0;
+pub const kVTDecodeInfo_FrameDropped: VTDecodeInfoFlags = 1 << 1;
+pub const kVTDecodeInfo_ImageBufferModifiable: VTDecodeInfoFlags = 1 << 2;
+pub const kVTDecodeInfo_SkippedLeadingFrameDropped: VTDecodeInfoFlags = 1 << 3;
+pub const kVTDecodeInfo_FrameInterrupted: VTDecodeInfoFlags = 1 << 4;
 
 // ---- CoreFoundation minimum required surface ----
 
@@ -149,6 +159,7 @@ extern "C" {
 pub type CMSampleBufferRef = *mut c_void;
 pub type CMBlockBufferRef = *mut c_void;
 pub type CMFormatDescriptionRef = *mut c_void;
+pub type CMTaggedBufferGroupRef = *mut c_void;
 pub type CMItemCount = isize;
 pub type Boolean = u8;
 
@@ -165,6 +176,16 @@ extern "C" {
         destination: *mut c_void,
     ) -> OSStatus;
     pub fn CMBlockBufferGetDataLength(the_buffer: CMBlockBufferRef) -> usize;
+    pub fn CMTaggedBufferGroupGetTypeID() -> usize;
+    pub fn CMTaggedBufferGroupGetCount(group: CMTaggedBufferGroupRef) -> CMItemCount;
+    pub fn CMTaggedBufferGroupGetCVPixelBufferAtIndex(
+        group: CMTaggedBufferGroupRef,
+        index: isize,
+    ) -> CVPixelBufferRef;
+    pub fn CMTaggedBufferGroupGetCMSampleBufferAtIndex(
+        group: CMTaggedBufferGroupRef,
+        index: isize,
+    ) -> CMSampleBufferRef;
 }
 
 // ---- CoreVideo: CVPixelBuffer (we only need create-with-IOSurface here) ----
@@ -186,6 +207,7 @@ extern "C" {
 
 pub type VTSessionRef = *mut c_void;
 pub type VTCompressionSessionRef = *mut c_void;
+pub type VTCompressionSessionOptionFlags = u32;
 pub type VTEncodeInfoFlags = u32;
 
 /// Encode-completion callback signature. Invoked once per encoded frame.
@@ -228,6 +250,34 @@ extern "C" {
         source_frame_ref_con: *mut c_void,
         info_flags_out: *mut VTEncodeInfoFlags,
     ) -> OSStatus;
+    pub fn VTCompressionSessionEncodeFrameWithOutputHandler(
+        session: VTCompressionSessionRef,
+        image_buffer: CVPixelBufferRef,
+        presentation_time_stamp: CMTime,
+        duration: CMTime,
+        frame_properties: CFDictionaryRef,
+        info_flags_out: *mut VTEncodeInfoFlags,
+        output_handler: *const c_void,
+    ) -> OSStatus;
+    pub fn VTCompressionSessionEncodeMultiImageFrame(
+        session: VTCompressionSessionRef,
+        tagged_buffer_group: CMTaggedBufferGroupRef,
+        presentation_time_stamp: CMTime,
+        duration: CMTime,
+        frame_properties: CFDictionaryRef,
+        source_frame_ref_con: *mut c_void,
+        info_flags_out: *mut VTEncodeInfoFlags,
+    ) -> OSStatus;
+    pub fn VTCompressionSessionEncodeMultiImageFrameWithOutputHandler(
+        session: VTCompressionSessionRef,
+        tagged_buffer_group: CMTaggedBufferGroupRef,
+        presentation_time_stamp: CMTime,
+        duration: CMTime,
+        frame_properties: CFDictionaryRef,
+        info_flags_out: *mut VTEncodeInfoFlags,
+        output_handler: *const c_void,
+    ) -> OSStatus;
+    pub fn VTIsStereoMVHEVCEncodeSupported() -> Boolean;
 
     pub fn VTCompressionSessionCompleteFrames(
         session: VTCompressionSessionRef,
@@ -235,7 +285,7 @@ extern "C" {
     ) -> OSStatus;
     pub fn VTCompressionSessionBeginPass(
         session: VTCompressionSessionRef,
-        begin_pass_flags: u32,
+        begin_pass_flags: VTCompressionSessionOptionFlags,
         reserved: *mut u32,
     ) -> OSStatus;
     pub fn VTCompressionSessionEndPass(
@@ -288,6 +338,126 @@ extern "C" {
     pub static kVTCompressionPropertyKey_YCbCrMatrix: CFStringRef;
     pub static kVTCompressionPropertyKey_ICCProfile: CFStringRef;
     pub static kVTCompressionPropertyKey_MultiPassStorage: CFStringRef;
+    pub static kVTVideoEncoderSpecification_EncoderID: CFStringRef;
+    pub static kVTAlphaChannelMode_PremultipliedAlpha: CFStringRef;
+    pub static kVTAlphaChannelMode_StraightAlpha: CFStringRef;
+    pub static kVTCameraCalibrationExtrinsicOriginSource_StereoCameraSystemBaseline: CFStringRef;
+    pub static kVTCameraCalibrationLensAlgorithmKind_ParametricLens: CFStringRef;
+    pub static kVTCameraCalibrationLensDomain_Color: CFStringRef;
+    pub static kVTCameraCalibrationLensRole_Left: CFStringRef;
+    pub static kVTCameraCalibrationLensRole_Mono: CFStringRef;
+    pub static kVTCameraCalibrationLensRole_Right: CFStringRef;
+    pub static kVTCompressionPreset_Balanced: CFStringRef;
+    pub static kVTCompressionPreset_HighQuality: CFStringRef;
+    pub static kVTCompressionPreset_HighSpeed: CFStringRef;
+    pub static kVTCompressionPreset_VideoConferencing: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_ExtrinsicOrientationQuaternion: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_ExtrinsicOriginSource: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrix: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrixProjectionOffset: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrixReferenceDimensions: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_LensAlgorithmKind: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_LensDistortions: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_LensDomain: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_LensFrameAdjustmentsPolynomialX: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_LensFrameAdjustmentsPolynomialY: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_LensIdentifier: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_LensRole: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_RadialAngleLimit: CFStringRef;
+    pub static kVTCompressionPropertyKey_AllowOpenGOP: CFStringRef;
+    pub static kVTCompressionPropertyKey_AllowTemporalCompression: CFStringRef;
+    pub static kVTCompressionPropertyKey_AlphaChannelMode: CFStringRef;
+    pub static kVTCompressionPropertyKey_AspectRatio16x9: CFStringRef;
+    pub static kVTCompressionPropertyKey_BaseLayerBitRateFraction: CFStringRef;
+    pub static kVTCompressionPropertyKey_BaseLayerFrameRate: CFStringRef;
+    pub static kVTCompressionPropertyKey_BaseLayerFrameRateFraction: CFStringRef;
+    pub static kVTCompressionPropertyKey_CalculateMeanSquaredError: CFStringRef;
+    pub static kVTCompressionPropertyKey_CameraCalibrationDataLensCollection: CFStringRef;
+    pub static kVTCompressionPropertyKey_CleanAperture: CFStringRef;
+    pub static kVTCompressionPropertyKey_ConstantBitRate: CFStringRef;
+    pub static kVTCompressionPropertyKey_ContentLightLevelInfo: CFStringRef;
+    pub static kVTCompressionPropertyKey_DataRateLimits: CFStringRef;
+    pub static kVTCompressionPropertyKey_Depth: CFStringRef;
+    pub static kVTCompressionPropertyKey_EnableLTR: CFStringRef;
+    pub static kVTCompressionPropertyKey_EncoderID: CFStringRef;
+    pub static kVTCompressionPropertyKey_EstimatedAverageBytesPerFrame: CFStringRef;
+    pub static kVTCompressionPropertyKey_ExpectedDuration: CFStringRef;
+    pub static kVTCompressionPropertyKey_FieldCount: CFStringRef;
+    pub static kVTCompressionPropertyKey_FieldDetail: CFStringRef;
+    pub static kVTCompressionPropertyKey_GammaLevel: CFStringRef;
+    pub static kVTCompressionPropertyKey_HDRMetadataInsertionMode: CFStringRef;
+    pub static kVTCompressionPropertyKey_HasLeftStereoEyeView: CFStringRef;
+    pub static kVTCompressionPropertyKey_HasRightStereoEyeView: CFStringRef;
+    pub static kVTCompressionPropertyKey_HeroEye: CFStringRef;
+    pub static kVTCompressionPropertyKey_HorizontalDisparityAdjustment: CFStringRef;
+    pub static kVTCompressionPropertyKey_HorizontalFieldOfView: CFStringRef;
+    pub static kVTCompressionPropertyKey_MVHEVCLeftAndRightViewIDs: CFStringRef;
+    pub static kVTCompressionPropertyKey_MVHEVCVideoLayerIDs: CFStringRef;
+    pub static kVTCompressionPropertyKey_MVHEVCViewIDs: CFStringRef;
+    pub static kVTCompressionPropertyKey_MasteringDisplayColorVolume: CFStringRef;
+    pub static kVTCompressionPropertyKey_MaxAllowedFrameQP: CFStringRef;
+    pub static kVTCompressionPropertyKey_MaxFrameDelayCount: CFStringRef;
+    pub static kVTCompressionPropertyKey_MaxH264SliceBytes: CFStringRef;
+    pub static kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration: CFStringRef;
+    pub static kVTCompressionPropertyKey_MaximizePowerEfficiency: CFStringRef;
+    pub static kVTCompressionPropertyKey_MaximumRealTimeFrameRate: CFStringRef;
+    pub static kVTCompressionPropertyKey_MinAllowedFrameQP: CFStringRef;
+    pub static kVTCompressionPropertyKey_MoreFramesAfterEnd: CFStringRef;
+    pub static kVTCompressionPropertyKey_MoreFramesBeforeStart: CFStringRef;
+    pub static kVTCompressionPropertyKey_NumberOfPendingFrames: CFStringRef;
+    pub static kVTCompressionPropertyKey_OutputBitDepth: CFStringRef;
+    pub static kVTCompressionPropertyKey_PixelAspectRatio: CFStringRef;
+    pub static kVTCompressionPropertyKey_PixelBufferPoolIsShared: CFStringRef;
+    pub static kVTCompressionPropertyKey_PixelTransferProperties: CFStringRef;
+    pub static kVTCompressionPropertyKey_PreserveAlphaChannel: CFStringRef;
+    pub static kVTCompressionPropertyKey_PreserveDynamicHDRMetadata: CFStringRef;
+    pub static kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality: CFStringRef;
+    pub static kVTCompressionPropertyKey_ProgressiveScan: CFStringRef;
+    pub static kVTCompressionPropertyKey_ProjectionKind: CFStringRef;
+    pub static kVTCompressionPropertyKey_RecommendedParallelizationLimit: CFStringRef;
+    pub static kVTCompressionPropertyKey_RecommendedParallelizedSubdivisionMinimumDuration: CFStringRef;
+    pub static kVTCompressionPropertyKey_RecommendedParallelizedSubdivisionMinimumFrameCount: CFStringRef;
+    pub static kVTCompressionPropertyKey_ReferenceBufferCount: CFStringRef;
+    pub static kVTCompressionPropertyKey_SourceFrameCount: CFStringRef;
+    pub static kVTCompressionPropertyKey_SpatialAdaptiveQPLevel: CFStringRef;
+    pub static kVTCompressionPropertyKey_StereoCameraBaseline: CFStringRef;
+    pub static kVTCompressionPropertyKey_SuggestedLookAheadFrameCount: CFStringRef;
+    pub static kVTCompressionPropertyKey_SupportedPresetDictionaries: CFStringRef;
+    pub static kVTCompressionPropertyKey_SupportsBaseFrameQP: CFStringRef;
+    pub static kVTCompressionPropertyKey_TargetQualityForAlpha: CFStringRef;
+    pub static kVTCompressionPropertyKey_UsingGPURegistryID: CFStringRef;
+    pub static kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder: CFStringRef;
+    pub static kVTCompressionPropertyKey_VBVBufferDuration: CFStringRef;
+    pub static kVTCompressionPropertyKey_VBVInitialDelayPercentage: CFStringRef;
+    pub static kVTCompressionPropertyKey_VBVMaxBitRate: CFStringRef;
+    pub static kVTCompressionPropertyKey_VariableBitRate: CFStringRef;
+    pub static kVTCompressionPropertyKey_VideoEncoderPixelBufferAttributes: CFStringRef;
+    pub static kVTCompressionPropertyKey_ViewPackingKind: CFStringRef;
+    pub static kVTEncodeFrameOptionKey_AcknowledgedLTRTokens: CFStringRef;
+    pub static kVTEncodeFrameOptionKey_BaseFrameQP: CFStringRef;
+    pub static kVTEncodeFrameOptionKey_ForceKeyFrame: CFStringRef;
+    pub static kVTEncodeFrameOptionKey_ForceLTRRefresh: CFStringRef;
+    pub static kVTHDRMetadataInsertionMode_Auto: CFStringRef;
+    pub static kVTHDRMetadataInsertionMode_None: CFStringRef;
+    pub static kVTHDRMetadataInsertionMode_RequestSDRRangePreservation: CFStringRef;
+    pub static kVTHeroEye_Left: CFStringRef;
+    pub static kVTHeroEye_Right: CFStringRef;
+    pub static kVTProjectionKind_Equirectangular: CFStringRef;
+    pub static kVTProjectionKind_HalfEquirectangular: CFStringRef;
+    pub static kVTProjectionKind_ParametricImmersive: CFStringRef;
+    pub static kVTProjectionKind_Rectilinear: CFStringRef;
+    pub static kVTSampleAttachmentKey_QualityMetrics: CFStringRef;
+    pub static kVTSampleAttachmentKey_RequireLTRAcknowledgementToken: CFStringRef;
+    pub static kVTSampleAttachmentQualityMetricsKey_ChromaBlueMeanSquaredError: CFStringRef;
+    pub static kVTSampleAttachmentQualityMetricsKey_ChromaRedMeanSquaredError: CFStringRef;
+    pub static kVTSampleAttachmentQualityMetricsKey_LumaMeanSquaredError: CFStringRef;
+    pub static kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder: CFStringRef;
+    pub static kVTVideoEncoderSpecification_EnableLowLatencyRateControl: CFStringRef;
+    pub static kVTVideoEncoderSpecification_PreferredEncoderGPURegistryID: CFStringRef;
+    pub static kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: CFStringRef;
+    pub static kVTVideoEncoderSpecification_RequiredEncoderGPURegistryID: CFStringRef;
+    pub static kVTViewPackingKind_OverUnder: CFStringRef;
+    pub static kVTViewPackingKind_SideBySide: CFStringRef;
 
     pub static kVTProfileLevel_H263_Profile0_Level10: CFStringRef;
     pub static kVTProfileLevel_H263_Profile0_Level45: CFStringRef;
@@ -364,9 +534,39 @@ extern "C" {
     pub fn VTDecompressionSessionDecodeFrame(
         session: VTDecompressionSessionRef,
         sample_buffer: CMSampleBufferRef,
-        decode_flags: u32,
+        decode_flags: VTDecodeFrameFlags,
         source_frame_ref_con: *mut c_void,
-        info_flags_out: *mut u32,
+        info_flags_out: *mut VTDecodeInfoFlags,
+    ) -> OSStatus;
+    pub fn VTDecompressionSessionDecodeFrameWithOutputHandler(
+        session: VTDecompressionSessionRef,
+        sample_buffer: CMSampleBufferRef,
+        decode_flags: VTDecodeFrameFlags,
+        info_flags_out: *mut VTDecodeInfoFlags,
+        output_handler: *const c_void,
+    ) -> OSStatus;
+    pub fn VTDecompressionSessionDecodeFrameWithMultiImageCapableOutputHandler(
+        session: VTDecompressionSessionRef,
+        sample_buffer: CMSampleBufferRef,
+        decode_flags: VTDecodeFrameFlags,
+        info_flags_out: *mut VTDecodeInfoFlags,
+        multi_image_capable_output_handler: *const c_void,
+    ) -> OSStatus;
+    pub fn VTDecompressionSessionDecodeFrameWithOptions(
+        session: VTDecompressionSessionRef,
+        sample_buffer: CMSampleBufferRef,
+        decode_flags: VTDecodeFrameFlags,
+        frame_options: CFDictionaryRef,
+        source_frame_ref_con: *mut c_void,
+        info_flags_out: *mut VTDecodeInfoFlags,
+    ) -> OSStatus;
+    pub fn VTDecompressionSessionDecodeFrameWithOptionsAndOutputHandler(
+        session: VTDecompressionSessionRef,
+        sample_buffer: CMSampleBufferRef,
+        decode_flags: VTDecodeFrameFlags,
+        frame_options: CFDictionaryRef,
+        info_flags_out: *mut VTDecodeInfoFlags,
+        output_handler: *const c_void,
     ) -> OSStatus;
 
     pub fn VTDecompressionSessionWaitForAsynchronousFrames(
@@ -386,10 +586,63 @@ extern "C" {
         pixel_buffer_out: *mut CVPixelBufferRef,
     ) -> OSStatus;
     pub fn VTIsHardwareDecodeSupported(codec_type: CMVideoCodecType) -> Boolean;
+    pub fn VTIsStereoMVHEVCDecodeSupported() -> Boolean;
+    pub fn VTDecompressionSessionSetMultiImageCallback(
+        decompression_session: VTDecompressionSessionRef,
+        output_multi_image_callback: VTDecompressionOutputMultiImageCallback,
+        output_multi_image_ref_con: *mut c_void,
+    ) -> OSStatus;
 
     pub static kVTDecompressionPropertyKey_RealTime: CFStringRef;
     pub static kVTDecompressionPropertyKey_MaximumOutputBufferDepth: CFStringRef;
     pub static kVTDecompressionPropertyKey_UsingHardwareAcceleratedVideoDecoder: CFStringRef;
+    pub static kVTDecodeFrameOptionKey_ContentAnalyzerCropRectangle: CFStringRef;
+    pub static kVTDecodeFrameOptionKey_ContentAnalyzerRotation: CFStringRef;
+    pub static kVTDecompressionPropertyKey_AllowBitstreamToChangeFrameDimensions: CFStringRef;
+    pub static kVTDecompressionPropertyKey_ContentHasInterframeDependencies: CFStringRef;
+    pub static kVTDecompressionPropertyKey_DecoderProducesRAWOutput: CFStringRef;
+    pub static kVTDecompressionPropertyKey_DeinterlaceMode: CFStringRef;
+    pub static kVTDecompressionPropertyKey_FieldMode: CFStringRef;
+    pub static kVTDecompressionPropertyKey_GeneratePerFrameHDRDisplayMetadata: CFStringRef;
+    pub static kVTDecompressionPropertyKey_MaxOutputPresentationTimeStampOfFramesBeingDecoded: CFStringRef;
+    pub static kVTDecompressionPropertyKey_MaximizePowerEfficiency: CFStringRef;
+    pub static kVTDecompressionPropertyKey_MinOutputPresentationTimeStampOfFramesBeingDecoded: CFStringRef;
+    pub static kVTDecompressionPropertyKey_NumberOfFramesBeingDecoded: CFStringRef;
+    pub static kVTDecompressionPropertyKey_OnlyTheseFrames: CFStringRef;
+    pub static kVTDecompressionPropertyKey_OutputPoolRequestedMinimumBufferCount: CFStringRef;
+    pub static kVTDecompressionPropertyKey_PixelBufferPool: CFStringRef;
+    pub static kVTDecompressionPropertyKey_PixelBufferPoolIsShared: CFStringRef;
+    pub static kVTDecompressionPropertyKey_PixelFormatsWithReducedResolutionSupport: CFStringRef;
+    pub static kVTDecompressionPropertyKey_PixelTransferProperties: CFStringRef;
+    pub static kVTDecompressionPropertyKey_PropagatePerFrameHDRDisplayMetadata: CFStringRef;
+    pub static kVTDecompressionPropertyKey_ReducedCoefficientDecode: CFStringRef;
+    pub static kVTDecompressionPropertyKey_ReducedFrameDelivery: CFStringRef;
+    pub static kVTDecompressionPropertyKey_ReducedResolutionDecode: CFStringRef;
+    pub static kVTDecompressionPropertyKey_RequestRAWOutput: CFStringRef;
+    pub static kVTDecompressionPropertyKey_RequestedMVHEVCVideoLayerIDs: CFStringRef;
+    pub static kVTDecompressionPropertyKey_SuggestedQualityOfServiceTiers: CFStringRef;
+    pub static kVTDecompressionPropertyKey_SupportedPixelFormatsOrderedByPerformance: CFStringRef;
+    pub static kVTDecompressionPropertyKey_SupportedPixelFormatsOrderedByQuality: CFStringRef;
+    pub static kVTDecompressionPropertyKey_ThreadCount: CFStringRef;
+    pub static kVTDecompressionPropertyKey_UsingGPURegistryID: CFStringRef;
+    pub static kVTDecompressionProperty_DeinterlaceMode_Temporal: CFStringRef;
+    pub static kVTDecompressionProperty_DeinterlaceMode_VerticalFilter: CFStringRef;
+    pub static kVTDecompressionProperty_FieldMode_BothFields: CFStringRef;
+    pub static kVTDecompressionProperty_FieldMode_BottomFieldOnly: CFStringRef;
+    pub static kVTDecompressionProperty_FieldMode_DeinterlaceFields: CFStringRef;
+    pub static kVTDecompressionProperty_FieldMode_SingleField: CFStringRef;
+    pub static kVTDecompressionProperty_FieldMode_TopFieldOnly: CFStringRef;
+    pub static kVTDecompressionProperty_OnlyTheseFrames_AllFrames: CFStringRef;
+    pub static kVTDecompressionProperty_OnlyTheseFrames_IFrames: CFStringRef;
+    pub static kVTDecompressionProperty_OnlyTheseFrames_KeyFrames: CFStringRef;
+    pub static kVTDecompressionProperty_OnlyTheseFrames_NonDroppableFrames: CFStringRef;
+    pub static kVTDecompressionProperty_TemporalLevelLimit: CFStringRef;
+    pub static kVTDecompressionResolutionKey_Height: CFStringRef;
+    pub static kVTDecompressionResolutionKey_Width: CFStringRef;
+    pub static kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder: CFStringRef;
+    pub static kVTVideoDecoderSpecification_PreferredDecoderGPURegistryID: CFStringRef;
+    pub static kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder: CFStringRef;
+    pub static kVTVideoDecoderSpecification_RequiredDecoderGPURegistryID: CFStringRef;
 
     // ---- VTPixelTransferSession (v0.6) ----
     pub fn VTPixelTransferSessionCreate(
@@ -443,11 +696,27 @@ extern "C" {
 
     // ---- VTVideoEncoderList (v0.7) ----
     pub fn VTCopyVideoEncoderList(options: CFDictionaryRef, list_out: *mut CFArrayRef) -> OSStatus;
+    pub fn VTCopySupportedPropertyDictionaryForEncoder(
+        width: i32,
+        height: i32,
+        codec_type: CMVideoCodecType,
+        encoder_specification: CFDictionaryRef,
+        encoder_id_out: *mut CFStringRef,
+        supported_properties_out: *mut CFDictionaryRef,
+    ) -> OSStatus;
+    pub static kVTVideoEncoderListOption_IncludeStandardDefinitionDVEncoders: CFStringRef;
     pub static kVTVideoEncoderList_CodecType: CFStringRef;
     pub static kVTVideoEncoderList_EncoderID: CFStringRef;
     pub static kVTVideoEncoderList_CodecName: CFStringRef;
     pub static kVTVideoEncoderList_EncoderName: CFStringRef;
     pub static kVTVideoEncoderList_DisplayName: CFStringRef;
+    pub static kVTVideoEncoderList_GPURegistryID: CFStringRef;
+    pub static kVTVideoEncoderList_InstanceLimit: CFStringRef;
+    pub static kVTVideoEncoderList_IsHardwareAccelerated: CFStringRef;
+    pub static kVTVideoEncoderList_PerformanceRating: CFStringRef;
+    pub static kVTVideoEncoderList_QualityRating: CFStringRef;
+    pub static kVTVideoEncoderList_SupportedSelectionProperties: CFStringRef;
+    pub static kVTVideoEncoderList_SupportsFrameReordering: CFStringRef;
 
     // ---- VTFrameSilo (v0.9) ----
     pub fn VTFrameSiloGetTypeID() -> usize;
@@ -584,12 +853,23 @@ pub type VTPixelTransferSessionRef = *mut c_void;
 pub type VTPixelRotationSessionRef = *mut c_void;
 
 pub type VTDecompressionSessionRef = *mut c_void;
+pub type VTDecodeFrameFlags = u32;
+pub type VTDecodeInfoFlags = u32;
 pub type VTDecompressionOutputCallback = unsafe extern "C" fn(
     decompression_output_ref_con: *mut c_void,
     source_frame_ref_con: *mut c_void,
     status: OSStatus,
-    info_flags: u32,
+    info_flags: VTDecodeInfoFlags,
     image_buffer: *mut c_void,
+    presentation_time_stamp: CMTime,
+    presentation_duration: CMTime,
+);
+pub type VTDecompressionOutputMultiImageCallback = unsafe extern "C" fn(
+    decompression_output_multi_image_ref_con: *mut c_void,
+    source_frame_ref_con: *mut c_void,
+    status: OSStatus,
+    info_flags: VTDecodeInfoFlags,
+    tagged_buffer_group: CMTaggedBufferGroupRef,
     presentation_time_stamp: CMTime,
     presentation_duration: CMTime,
 );

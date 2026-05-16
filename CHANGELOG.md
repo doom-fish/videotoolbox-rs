@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2026-05-16
+
+### Added
+
+- The remaining public `VTCompressionProperties.h` /
+  `VTDecompressionProperties.h` constants called out by the audit, including
+  encoder/decoder specification keys, HDR / stereo / calibration keys, and
+  per-frame decode option keys.
+- Raw FFI coverage for the async / multi-image encode and decode entry points:
+  `VTCompressionSessionEncodeFrameWithOutputHandler`,
+  `VTCompressionSessionEncodeMultiImageFrame*`,
+  `VTDecompressionSessionDecodeFrameWith*`,
+  `VTDecompressionSessionSetMultiImageCallback`, and the stereo MV-HEVC support
+  queries.
+- `TaggedBufferGroup`, `CompressionSession::encode_multi_image`,
+  `DecompressionSession::decode_with_options`, and
+  `DecompressionSession::set_multi_image_callback` for the new multi-image /
+  per-frame-options surface.
+- `available_video_encoder_details[_with_options]` and
+  `supported_property_dictionary_for_encoder`, exposing the extended
+  `VTVideoEncoderList` metadata and selection-property dictionary helpers.
+- Audit smoke tests covering the newly-added FFI surface and safe wrappers.
+
+### Changed
+
+- `examples/05_encoder_list` now prints encoder metadata and demonstrates
+  `supported_property_dictionary_for_encoder()`.
+- Refreshed `COVERAGE_AUDIT.md` after closing the compression/decompression
+  constant, async/multi-image, and encoder-list metadata gaps.
+
 ## [0.11.0] - 2026-05-16
 
 ### Added

@@ -1,10 +1,10 @@
 # videotoolbox-rs coverage audit (vs MacOSX26.2.sdk)
 
 SDK_PUBLIC_SYMBOLS: 449
-VERIFIED: 216
-GAPS: 232
+VERIFIED: 405
+GAPS: 43
 EXEMPT: 1
-COVERAGE_PCT: 48.21%
+COVERAGE_PCT: 90.40%
 
 Audit scope: top-level public VideoToolbox symbols from the macOS SDK headers only (interfaces/protocols, typedef enum/struct/opaque refs, exported constants, and exported functions). Exact-name matches in the public `ffi` module count as verified; ObjC-only frame-processor, motion-estimation, and RAW-processing entry points are credited when the public safe wrapper reaches them through the Swift bridge.
 
@@ -227,190 +227,199 @@ Audit scope: top-level public VideoToolbox symbols from the macOS SDK headers on
 | `kVTVideoEncoderList_DisplayName` | constant | `VTVideoEncoderList.h` | `ffi::kVTVideoEncoderList_DisplayName` |
 | `kVTVideoEncoderList_EncoderID` | constant | `VTVideoEncoderList.h` | `ffi::kVTVideoEncoderList_EncoderID` |
 | `kVTVideoEncoderList_EncoderName` | constant | `VTVideoEncoderList.h` | `ffi::kVTVideoEncoderList_EncoderName` |
+| `VTCompressionSessionEncodeFrameWithOutputHandler` | function | `VTCompressionSession.h` | `ffi::VTCompressionSessionEncodeFrameWithOutputHandler` |
+| `VTCompressionSessionEncodeMultiImageFrameWithOutputHandler` | function | `VTCompressionSession.h` | `ffi::VTCompressionSessionEncodeMultiImageFrameWithOutputHandler` |
+| `VTCompressionSessionEncodeMultiImageFrame` | function | `VTCompressionSession.h` | `CompressionSession::encode_multi_image + ffi::VTCompressionSessionEncodeMultiImageFrame` |
+| `VTCompressionSessionOptionFlags` | options | `VTCompressionSession.h` | `ffi::VTCompressionSessionOptionFlags` |
+| `VTCopySupportedPropertyDictionaryForEncoder` | function | `VTVideoEncoderList.h` | `encoder_list::supported_property_dictionary_for_encoder + ffi::VTCopySupportedPropertyDictionaryForEncoder` |
+| `VTDecodeFrameFlags` | options | `VTErrors.h` | `ffi::VTDecodeFrameFlags` |
+| `VTDecodeInfoFlags` | options | `VTErrors.h` | `ffi::VTDecodeInfoFlags` |
+| `VTDecompressionSessionDecodeFrameWithMultiImageCapableOutputHandler` | function | `VTDecompressionSession.h` | `ffi::VTDecompressionSessionDecodeFrameWithMultiImageCapableOutputHandler` |
+| `VTDecompressionSessionDecodeFrameWithOptionsAndOutputHandler` | function | `VTDecompressionSession.h` | `ffi::VTDecompressionSessionDecodeFrameWithOptionsAndOutputHandler` |
+| `VTDecompressionSessionDecodeFrameWithOptions` | function | `VTDecompressionSession.h` | `DecompressionSession::decode_with_options + ffi::VTDecompressionSessionDecodeFrameWithOptions` |
+| `VTDecompressionSessionDecodeFrameWithOutputHandler` | function | `VTDecompressionSession.h` | `ffi::VTDecompressionSessionDecodeFrameWithOutputHandler` |
+| `VTDecompressionSessionSetMultiImageCallback` | function | `VTDecompressionSession.h` | `DecompressionSession::set_multi_image_callback + ffi::VTDecompressionSessionSetMultiImageCallback` |
+| `VTIsStereoMVHEVCDecodeSupported` | function | `VTDecompressionSession.h` | `DecompressionSession::is_stereo_mvhevc_decode_supported + ffi::VTIsStereoMVHEVCDecodeSupported` |
+| `VTIsStereoMVHEVCEncodeSupported` | function | `VTCompressionSession.h` | `CompressionSession::is_stereo_mvhevc_encode_supported + ffi::VTIsStereoMVHEVCEncodeSupported` |
+| `kVTAlphaChannelMode_PremultipliedAlpha` | constant | `VTCompressionProperties.h` | `ffi::kVTAlphaChannelMode_PremultipliedAlpha` |
+| `kVTAlphaChannelMode_StraightAlpha` | constant | `VTCompressionProperties.h` | `ffi::kVTAlphaChannelMode_StraightAlpha` |
+| `kVTCameraCalibrationExtrinsicOriginSource_StereoCameraSystemBaseline` | constant | `VTCompressionProperties.h` | `ffi::kVTCameraCalibrationExtrinsicOriginSource_StereoCameraSystemBaseline` |
+| `kVTCameraCalibrationLensAlgorithmKind_ParametricLens` | constant | `VTCompressionProperties.h` | `ffi::kVTCameraCalibrationLensAlgorithmKind_ParametricLens` |
+| `kVTCameraCalibrationLensDomain_Color` | constant | `VTCompressionProperties.h` | `ffi::kVTCameraCalibrationLensDomain_Color` |
+| `kVTCameraCalibrationLensRole_Left` | constant | `VTCompressionProperties.h` | `ffi::kVTCameraCalibrationLensRole_Left` |
+| `kVTCameraCalibrationLensRole_Mono` | constant | `VTCompressionProperties.h` | `ffi::kVTCameraCalibrationLensRole_Mono` |
+| `kVTCameraCalibrationLensRole_Right` | constant | `VTCompressionProperties.h` | `ffi::kVTCameraCalibrationLensRole_Right` |
+| `kVTCompressionPreset_Balanced` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPreset_Balanced` |
+| `kVTCompressionPreset_HighQuality` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPreset_HighQuality` |
+| `kVTCompressionPreset_HighSpeed` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPreset_HighSpeed` |
+| `kVTCompressionPreset_VideoConferencing` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPreset_VideoConferencing` |
+| `kVTCompressionPropertyCameraCalibrationKey_ExtrinsicOrientationQuaternion` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_ExtrinsicOrientationQuaternion` |
+| `kVTCompressionPropertyCameraCalibrationKey_ExtrinsicOriginSource` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_ExtrinsicOriginSource` |
+| `kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrixProjectionOffset` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrixProjectionOffset` |
+| `kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrixReferenceDimensions` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrixReferenceDimensions` |
+| `kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrix` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrix` |
+| `kVTCompressionPropertyCameraCalibrationKey_LensAlgorithmKind` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_LensAlgorithmKind` |
+| `kVTCompressionPropertyCameraCalibrationKey_LensDistortions` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_LensDistortions` |
+| `kVTCompressionPropertyCameraCalibrationKey_LensDomain` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_LensDomain` |
+| `kVTCompressionPropertyCameraCalibrationKey_LensFrameAdjustmentsPolynomialX` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_LensFrameAdjustmentsPolynomialX` |
+| `kVTCompressionPropertyCameraCalibrationKey_LensFrameAdjustmentsPolynomialY` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_LensFrameAdjustmentsPolynomialY` |
+| `kVTCompressionPropertyCameraCalibrationKey_LensIdentifier` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_LensIdentifier` |
+| `kVTCompressionPropertyCameraCalibrationKey_LensRole` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_LensRole` |
+| `kVTCompressionPropertyCameraCalibrationKey_RadialAngleLimit` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyCameraCalibrationKey_RadialAngleLimit` |
+| `kVTCompressionPropertyKey_AllowOpenGOP` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_AllowOpenGOP` |
+| `kVTCompressionPropertyKey_AllowTemporalCompression` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_AllowTemporalCompression` |
+| `kVTCompressionPropertyKey_AlphaChannelMode` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_AlphaChannelMode` |
+| `kVTCompressionPropertyKey_AspectRatio16x9` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_AspectRatio16x9` |
+| `kVTCompressionPropertyKey_BaseLayerBitRateFraction` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_BaseLayerBitRateFraction` |
+| `kVTCompressionPropertyKey_BaseLayerFrameRateFraction` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_BaseLayerFrameRateFraction` |
+| `kVTCompressionPropertyKey_BaseLayerFrameRate` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_BaseLayerFrameRate` |
+| `kVTCompressionPropertyKey_CalculateMeanSquaredError` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_CalculateMeanSquaredError` |
+| `kVTCompressionPropertyKey_CameraCalibrationDataLensCollection` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_CameraCalibrationDataLensCollection` |
+| `kVTCompressionPropertyKey_CleanAperture` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_CleanAperture` |
+| `kVTCompressionPropertyKey_ConstantBitRate` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_ConstantBitRate` |
+| `kVTCompressionPropertyKey_ContentLightLevelInfo` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_ContentLightLevelInfo` |
+| `kVTCompressionPropertyKey_DataRateLimits` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_DataRateLimits` |
+| `kVTCompressionPropertyKey_Depth` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_Depth` |
+| `kVTCompressionPropertyKey_EnableLTR` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_EnableLTR` |
+| `kVTCompressionPropertyKey_EncoderID` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_EncoderID` |
+| `kVTCompressionPropertyKey_EstimatedAverageBytesPerFrame` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_EstimatedAverageBytesPerFrame` |
+| `kVTCompressionPropertyKey_ExpectedDuration` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_ExpectedDuration` |
+| `kVTCompressionPropertyKey_FieldCount` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_FieldCount` |
+| `kVTCompressionPropertyKey_FieldDetail` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_FieldDetail` |
+| `kVTCompressionPropertyKey_GammaLevel` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_GammaLevel` |
+| `kVTCompressionPropertyKey_HDRMetadataInsertionMode` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_HDRMetadataInsertionMode` |
+| `kVTCompressionPropertyKey_HasLeftStereoEyeView` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_HasLeftStereoEyeView` |
+| `kVTCompressionPropertyKey_HasRightStereoEyeView` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_HasRightStereoEyeView` |
+| `kVTCompressionPropertyKey_HeroEye` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_HeroEye` |
+| `kVTCompressionPropertyKey_HorizontalDisparityAdjustment` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_HorizontalDisparityAdjustment` |
+| `kVTCompressionPropertyKey_HorizontalFieldOfView` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_HorizontalFieldOfView` |
+| `kVTCompressionPropertyKey_MVHEVCLeftAndRightViewIDs` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MVHEVCLeftAndRightViewIDs` |
+| `kVTCompressionPropertyKey_MVHEVCVideoLayerIDs` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MVHEVCVideoLayerIDs` |
+| `kVTCompressionPropertyKey_MVHEVCViewIDs` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MVHEVCViewIDs` |
+| `kVTCompressionPropertyKey_MasteringDisplayColorVolume` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MasteringDisplayColorVolume` |
+| `kVTCompressionPropertyKey_MaxAllowedFrameQP` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MaxAllowedFrameQP` |
+| `kVTCompressionPropertyKey_MaxFrameDelayCount` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MaxFrameDelayCount` |
+| `kVTCompressionPropertyKey_MaxH264SliceBytes` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MaxH264SliceBytes` |
+| `kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration` |
+| `kVTCompressionPropertyKey_MaximizePowerEfficiency` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MaximizePowerEfficiency` |
+| `kVTCompressionPropertyKey_MaximumRealTimeFrameRate` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MaximumRealTimeFrameRate` |
+| `kVTCompressionPropertyKey_MinAllowedFrameQP` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MinAllowedFrameQP` |
+| `kVTCompressionPropertyKey_MoreFramesAfterEnd` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MoreFramesAfterEnd` |
+| `kVTCompressionPropertyKey_MoreFramesBeforeStart` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_MoreFramesBeforeStart` |
+| `kVTCompressionPropertyKey_NumberOfPendingFrames` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_NumberOfPendingFrames` |
+| `kVTCompressionPropertyKey_OutputBitDepth` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_OutputBitDepth` |
+| `kVTCompressionPropertyKey_PixelAspectRatio` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_PixelAspectRatio` |
+| `kVTCompressionPropertyKey_PixelBufferPoolIsShared` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_PixelBufferPoolIsShared` |
+| `kVTCompressionPropertyKey_PixelTransferProperties` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_PixelTransferProperties` |
+| `kVTCompressionPropertyKey_PreserveAlphaChannel` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_PreserveAlphaChannel` |
+| `kVTCompressionPropertyKey_PreserveDynamicHDRMetadata` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_PreserveDynamicHDRMetadata` |
+| `kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality` |
+| `kVTCompressionPropertyKey_ProgressiveScan` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_ProgressiveScan` |
+| `kVTCompressionPropertyKey_ProjectionKind` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_ProjectionKind` |
+| `kVTCompressionPropertyKey_RecommendedParallelizationLimit` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_RecommendedParallelizationLimit` |
+| `kVTCompressionPropertyKey_RecommendedParallelizedSubdivisionMinimumDuration` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_RecommendedParallelizedSubdivisionMinimumDuration` |
+| `kVTCompressionPropertyKey_RecommendedParallelizedSubdivisionMinimumFrameCount` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_RecommendedParallelizedSubdivisionMinimumFrameCount` |
+| `kVTCompressionPropertyKey_ReferenceBufferCount` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_ReferenceBufferCount` |
+| `kVTCompressionPropertyKey_SourceFrameCount` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_SourceFrameCount` |
+| `kVTCompressionPropertyKey_SpatialAdaptiveQPLevel` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_SpatialAdaptiveQPLevel` |
+| `kVTCompressionPropertyKey_StereoCameraBaseline` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_StereoCameraBaseline` |
+| `kVTCompressionPropertyKey_SuggestedLookAheadFrameCount` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_SuggestedLookAheadFrameCount` |
+| `kVTCompressionPropertyKey_SupportedPresetDictionaries` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_SupportedPresetDictionaries` |
+| `kVTCompressionPropertyKey_SupportsBaseFrameQP` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_SupportsBaseFrameQP` |
+| `kVTCompressionPropertyKey_TargetQualityForAlpha` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_TargetQualityForAlpha` |
+| `kVTCompressionPropertyKey_UsingGPURegistryID` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_UsingGPURegistryID` |
+| `kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder` |
+| `kVTCompressionPropertyKey_VBVBufferDuration` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_VBVBufferDuration` |
+| `kVTCompressionPropertyKey_VBVInitialDelayPercentage` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_VBVInitialDelayPercentage` |
+| `kVTCompressionPropertyKey_VBVMaxBitRate` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_VBVMaxBitRate` |
+| `kVTCompressionPropertyKey_VariableBitRate` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_VariableBitRate` |
+| `kVTCompressionPropertyKey_VideoEncoderPixelBufferAttributes` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_VideoEncoderPixelBufferAttributes` |
+| `kVTCompressionPropertyKey_ViewPackingKind` | constant | `VTCompressionProperties.h` | `ffi::kVTCompressionPropertyKey_ViewPackingKind` |
+| `kVTDecodeFrameOptionKey_ContentAnalyzerCropRectangle` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecodeFrameOptionKey_ContentAnalyzerCropRectangle` |
+| `kVTDecodeFrameOptionKey_ContentAnalyzerRotation` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecodeFrameOptionKey_ContentAnalyzerRotation` |
+| `kVTDecompressionPropertyKey_AllowBitstreamToChangeFrameDimensions` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_AllowBitstreamToChangeFrameDimensions` |
+| `kVTDecompressionPropertyKey_ContentHasInterframeDependencies` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_ContentHasInterframeDependencies` |
+| `kVTDecompressionPropertyKey_DecoderProducesRAWOutput` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_DecoderProducesRAWOutput` |
+| `kVTDecompressionPropertyKey_DeinterlaceMode` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_DeinterlaceMode` |
+| `kVTDecompressionPropertyKey_FieldMode` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_FieldMode` |
+| `kVTDecompressionPropertyKey_GeneratePerFrameHDRDisplayMetadata` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_GeneratePerFrameHDRDisplayMetadata` |
+| `kVTDecompressionPropertyKey_MaxOutputPresentationTimeStampOfFramesBeingDecoded` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_MaxOutputPresentationTimeStampOfFramesBeingDecoded` |
+| `kVTDecompressionPropertyKey_MaximizePowerEfficiency` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_MaximizePowerEfficiency` |
+| `kVTDecompressionPropertyKey_MinOutputPresentationTimeStampOfFramesBeingDecoded` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_MinOutputPresentationTimeStampOfFramesBeingDecoded` |
+| `kVTDecompressionPropertyKey_NumberOfFramesBeingDecoded` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_NumberOfFramesBeingDecoded` |
+| `kVTDecompressionPropertyKey_OnlyTheseFrames` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_OnlyTheseFrames` |
+| `kVTDecompressionPropertyKey_OutputPoolRequestedMinimumBufferCount` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_OutputPoolRequestedMinimumBufferCount` |
+| `kVTDecompressionPropertyKey_PixelBufferPoolIsShared` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_PixelBufferPoolIsShared` |
+| `kVTDecompressionPropertyKey_PixelBufferPool` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_PixelBufferPool` |
+| `kVTDecompressionPropertyKey_PixelFormatsWithReducedResolutionSupport` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_PixelFormatsWithReducedResolutionSupport` |
+| `kVTDecompressionPropertyKey_PixelTransferProperties` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_PixelTransferProperties` |
+| `kVTDecompressionPropertyKey_PropagatePerFrameHDRDisplayMetadata` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_PropagatePerFrameHDRDisplayMetadata` |
+| `kVTDecompressionPropertyKey_ReducedCoefficientDecode` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_ReducedCoefficientDecode` |
+| `kVTDecompressionPropertyKey_ReducedFrameDelivery` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_ReducedFrameDelivery` |
+| `kVTDecompressionPropertyKey_ReducedResolutionDecode` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_ReducedResolutionDecode` |
+| `kVTDecompressionPropertyKey_RequestRAWOutput` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_RequestRAWOutput` |
+| `kVTDecompressionPropertyKey_RequestedMVHEVCVideoLayerIDs` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_RequestedMVHEVCVideoLayerIDs` |
+| `kVTDecompressionPropertyKey_SuggestedQualityOfServiceTiers` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_SuggestedQualityOfServiceTiers` |
+| `kVTDecompressionPropertyKey_SupportedPixelFormatsOrderedByPerformance` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_SupportedPixelFormatsOrderedByPerformance` |
+| `kVTDecompressionPropertyKey_SupportedPixelFormatsOrderedByQuality` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_SupportedPixelFormatsOrderedByQuality` |
+| `kVTDecompressionPropertyKey_ThreadCount` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_ThreadCount` |
+| `kVTDecompressionPropertyKey_UsingGPURegistryID` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionPropertyKey_UsingGPURegistryID` |
+| `kVTDecompressionProperty_DeinterlaceMode_Temporal` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionProperty_DeinterlaceMode_Temporal` |
+| `kVTDecompressionProperty_DeinterlaceMode_VerticalFilter` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionProperty_DeinterlaceMode_VerticalFilter` |
+| `kVTDecompressionProperty_FieldMode_BothFields` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionProperty_FieldMode_BothFields` |
+| `kVTDecompressionProperty_FieldMode_BottomFieldOnly` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionProperty_FieldMode_BottomFieldOnly` |
+| `kVTDecompressionProperty_FieldMode_DeinterlaceFields` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionProperty_FieldMode_DeinterlaceFields` |
+| `kVTDecompressionProperty_FieldMode_SingleField` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionProperty_FieldMode_SingleField` |
+| `kVTDecompressionProperty_FieldMode_TopFieldOnly` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionProperty_FieldMode_TopFieldOnly` |
+| `kVTDecompressionProperty_OnlyTheseFrames_AllFrames` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionProperty_OnlyTheseFrames_AllFrames` |
+| `kVTDecompressionProperty_OnlyTheseFrames_IFrames` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionProperty_OnlyTheseFrames_IFrames` |
+| `kVTDecompressionProperty_OnlyTheseFrames_KeyFrames` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionProperty_OnlyTheseFrames_KeyFrames` |
+| `kVTDecompressionProperty_OnlyTheseFrames_NonDroppableFrames` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionProperty_OnlyTheseFrames_NonDroppableFrames` |
+| `kVTDecompressionProperty_TemporalLevelLimit` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionProperty_TemporalLevelLimit` |
+| `kVTDecompressionResolutionKey_Height` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionResolutionKey_Height` |
+| `kVTDecompressionResolutionKey_Width` | constant | `VTDecompressionProperties.h` | `ffi::kVTDecompressionResolutionKey_Width` |
+| `kVTEncodeFrameOptionKey_AcknowledgedLTRTokens` | constant | `VTCompressionProperties.h` | `ffi::kVTEncodeFrameOptionKey_AcknowledgedLTRTokens` |
+| `kVTEncodeFrameOptionKey_BaseFrameQP` | constant | `VTCompressionProperties.h` | `ffi::kVTEncodeFrameOptionKey_BaseFrameQP` |
+| `kVTEncodeFrameOptionKey_ForceKeyFrame` | constant | `VTCompressionProperties.h` | `ffi::kVTEncodeFrameOptionKey_ForceKeyFrame` |
+| `kVTEncodeFrameOptionKey_ForceLTRRefresh` | constant | `VTCompressionProperties.h` | `ffi::kVTEncodeFrameOptionKey_ForceLTRRefresh` |
+| `kVTHDRMetadataInsertionMode_Auto` | constant | `VTCompressionProperties.h` | `ffi::kVTHDRMetadataInsertionMode_Auto` |
+| `kVTHDRMetadataInsertionMode_None` | constant | `VTCompressionProperties.h` | `ffi::kVTHDRMetadataInsertionMode_None` |
+| `kVTHDRMetadataInsertionMode_RequestSDRRangePreservation` | constant | `VTCompressionProperties.h` | `ffi::kVTHDRMetadataInsertionMode_RequestSDRRangePreservation` |
+| `kVTHeroEye_Left` | constant | `VTCompressionProperties.h` | `ffi::kVTHeroEye_Left` |
+| `kVTHeroEye_Right` | constant | `VTCompressionProperties.h` | `ffi::kVTHeroEye_Right` |
+| `kVTProjectionKind_Equirectangular` | constant | `VTCompressionProperties.h` | `ffi::kVTProjectionKind_Equirectangular` |
+| `kVTProjectionKind_HalfEquirectangular` | constant | `VTCompressionProperties.h` | `ffi::kVTProjectionKind_HalfEquirectangular` |
+| `kVTProjectionKind_ParametricImmersive` | constant | `VTCompressionProperties.h` | `ffi::kVTProjectionKind_ParametricImmersive` |
+| `kVTProjectionKind_Rectilinear` | constant | `VTCompressionProperties.h` | `ffi::kVTProjectionKind_Rectilinear` |
+| `kVTSampleAttachmentKey_QualityMetrics` | constant | `VTCompressionProperties.h` | `ffi::kVTSampleAttachmentKey_QualityMetrics` |
+| `kVTSampleAttachmentKey_RequireLTRAcknowledgementToken` | constant | `VTCompressionProperties.h` | `ffi::kVTSampleAttachmentKey_RequireLTRAcknowledgementToken` |
+| `kVTSampleAttachmentQualityMetricsKey_ChromaBlueMeanSquaredError` | constant | `VTCompressionProperties.h` | `ffi::kVTSampleAttachmentQualityMetricsKey_ChromaBlueMeanSquaredError` |
+| `kVTSampleAttachmentQualityMetricsKey_ChromaRedMeanSquaredError` | constant | `VTCompressionProperties.h` | `ffi::kVTSampleAttachmentQualityMetricsKey_ChromaRedMeanSquaredError` |
+| `kVTSampleAttachmentQualityMetricsKey_LumaMeanSquaredError` | constant | `VTCompressionProperties.h` | `ffi::kVTSampleAttachmentQualityMetricsKey_LumaMeanSquaredError` |
+| `kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder` | constant | `VTDecompressionProperties.h` | `ffi::kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder` |
+| `kVTVideoDecoderSpecification_PreferredDecoderGPURegistryID` | constant | `VTDecompressionProperties.h` | `ffi::kVTVideoDecoderSpecification_PreferredDecoderGPURegistryID` |
+| `kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder` | constant | `VTDecompressionProperties.h` | `ffi::kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder` |
+| `kVTVideoDecoderSpecification_RequiredDecoderGPURegistryID` | constant | `VTDecompressionProperties.h` | `ffi::kVTVideoDecoderSpecification_RequiredDecoderGPURegistryID` |
+| `kVTVideoEncoderListOption_IncludeStandardDefinitionDVEncoders` | constant | `VTVideoEncoderList.h` | `encoder_list::VideoEncoderListOptions + ffi::kVTVideoEncoderListOption_IncludeStandardDefinitionDVEncoders` |
+| `kVTVideoEncoderList_GPURegistryID` | constant | `VTVideoEncoderList.h` | `encoder_list::available_video_encoder_details[_with_options] + ffi::kVTVideoEncoderList_GPURegistryID` |
+| `kVTVideoEncoderList_InstanceLimit` | constant | `VTVideoEncoderList.h` | `encoder_list::available_video_encoder_details[_with_options] + ffi::kVTVideoEncoderList_InstanceLimit` |
+| `kVTVideoEncoderList_IsHardwareAccelerated` | constant | `VTVideoEncoderList.h` | `encoder_list::available_video_encoder_details[_with_options] + ffi::kVTVideoEncoderList_IsHardwareAccelerated` |
+| `kVTVideoEncoderList_PerformanceRating` | constant | `VTVideoEncoderList.h` | `encoder_list::available_video_encoder_details[_with_options] + ffi::kVTVideoEncoderList_PerformanceRating` |
+| `kVTVideoEncoderList_QualityRating` | constant | `VTVideoEncoderList.h` | `encoder_list::available_video_encoder_details[_with_options] + ffi::kVTVideoEncoderList_QualityRating` |
+| `kVTVideoEncoderList_SupportedSelectionProperties` | constant | `VTVideoEncoderList.h` | `encoder_list::available_video_encoder_details[_with_options] + ffi::kVTVideoEncoderList_SupportedSelectionProperties` |
+| `kVTVideoEncoderList_SupportsFrameReordering` | constant | `VTVideoEncoderList.h` | `encoder_list::available_video_encoder_details[_with_options] + ffi::kVTVideoEncoderList_SupportsFrameReordering` |
+| `kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder` | constant | `VTCompressionProperties.h` | `ffi::kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder` |
+| `kVTVideoEncoderSpecification_EnableLowLatencyRateControl` | constant | `VTCompressionProperties.h` | `ffi::kVTVideoEncoderSpecification_EnableLowLatencyRateControl` |
+| `kVTVideoEncoderSpecification_EncoderID` | constant | `VTCompressionSession.h` | `encoder_list::supported_property_dictionary_for_encoder + ffi::kVTVideoEncoderSpecification_EncoderID` |
+| `kVTVideoEncoderSpecification_PreferredEncoderGPURegistryID` | constant | `VTCompressionProperties.h` | `ffi::kVTVideoEncoderSpecification_PreferredEncoderGPURegistryID` |
+| `kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder` | constant | `VTCompressionProperties.h` | `ffi::kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder` |
+| `kVTVideoEncoderSpecification_RequiredEncoderGPURegistryID` | constant | `VTCompressionProperties.h` | `ffi::kVTVideoEncoderSpecification_RequiredEncoderGPURegistryID` |
+| `kVTViewPackingKind_OverUnder` | constant | `VTCompressionProperties.h` | `ffi::kVTViewPackingKind_OverUnder` |
+| `kVTViewPackingKind_SideBySide` | constant | `VTCompressionProperties.h` | `ffi::kVTViewPackingKind_SideBySide` |
 
 ## 🔴 GAPS
-| Symbol | Kind | Header | Notes |
+| Symbol | Kind | Header | Why missing |
 | --- | --- | --- | --- |
-| `kVTAlphaChannelMode_PremultipliedAlpha` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTAlphaChannelMode_StraightAlpha` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCameraCalibrationExtrinsicOriginSource_StereoCameraSystemBaseline` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCameraCalibrationLensAlgorithmKind_ParametricLens` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCameraCalibrationLensDomain_Color` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCameraCalibrationLensRole_Left` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCameraCalibrationLensRole_Mono` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCameraCalibrationLensRole_Right` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPreset_Balanced` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPreset_HighQuality` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPreset_HighSpeed` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPreset_VideoConferencing` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_ExtrinsicOrientationQuaternion` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_ExtrinsicOriginSource` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrix` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrixProjectionOffset` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrixReferenceDimensions` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_LensAlgorithmKind` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_LensDistortions` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_LensDomain` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_LensFrameAdjustmentsPolynomialX` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_LensFrameAdjustmentsPolynomialY` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_LensIdentifier` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_LensRole` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyCameraCalibrationKey_RadialAngleLimit` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_AllowOpenGOP` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_AllowTemporalCompression` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_AlphaChannelMode` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_AspectRatio16x9` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_BaseLayerBitRateFraction` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_BaseLayerFrameRate` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_BaseLayerFrameRateFraction` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_CalculateMeanSquaredError` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_CameraCalibrationDataLensCollection` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_CleanAperture` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_ConstantBitRate` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_ContentLightLevelInfo` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_DataRateLimits` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_Depth` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_EnableLTR` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_EncoderID` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_EstimatedAverageBytesPerFrame` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_ExpectedDuration` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_FieldCount` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_FieldDetail` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_GammaLevel` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_HDRMetadataInsertionMode` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_HasLeftStereoEyeView` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_HasRightStereoEyeView` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_HeroEye` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_HorizontalDisparityAdjustment` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_HorizontalFieldOfView` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MVHEVCLeftAndRightViewIDs` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MVHEVCVideoLayerIDs` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MVHEVCViewIDs` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MasteringDisplayColorVolume` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MaxAllowedFrameQP` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MaxFrameDelayCount` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MaxH264SliceBytes` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MaximizePowerEfficiency` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MaximumRealTimeFrameRate` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MinAllowedFrameQP` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MoreFramesAfterEnd` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_MoreFramesBeforeStart` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_NumberOfPendingFrames` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_OutputBitDepth` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_PixelAspectRatio` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_PixelBufferPoolIsShared` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_PixelTransferProperties` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_PreserveAlphaChannel` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_PreserveDynamicHDRMetadata` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_ProgressiveScan` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_ProjectionKind` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_RecommendedParallelizationLimit` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_RecommendedParallelizedSubdivisionMinimumDuration` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_RecommendedParallelizedSubdivisionMinimumFrameCount` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_ReferenceBufferCount` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_SourceFrameCount` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_SpatialAdaptiveQPLevel` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_StereoCameraBaseline` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_SuggestedLookAheadFrameCount` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_SupportedPresetDictionaries` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_SupportsBaseFrameQP` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_TargetQualityForAlpha` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_UsingGPURegistryID` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_VBVBufferDuration` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_VBVInitialDelayPercentage` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_VBVMaxBitRate` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_VariableBitRate` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_VideoEncoderPixelBufferAttributes` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTCompressionPropertyKey_ViewPackingKind` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTEncodeFrameOptionKey_AcknowledgedLTRTokens` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTEncodeFrameOptionKey_BaseFrameQP` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTEncodeFrameOptionKey_ForceKeyFrame` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTEncodeFrameOptionKey_ForceLTRRefresh` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTHDRMetadataInsertionMode_Auto` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTHDRMetadataInsertionMode_None` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTHDRMetadataInsertionMode_RequestSDRRangePreservation` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTHeroEye_Left` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTHeroEye_Right` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTProjectionKind_Equirectangular` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTProjectionKind_HalfEquirectangular` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTProjectionKind_ParametricImmersive` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTProjectionKind_Rectilinear` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTSampleAttachmentKey_QualityMetrics` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTSampleAttachmentKey_RequireLTRAcknowledgementToken` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTSampleAttachmentQualityMetricsKey_ChromaBlueMeanSquaredError` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTSampleAttachmentQualityMetricsKey_ChromaRedMeanSquaredError` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTSampleAttachmentQualityMetricsKey_LumaMeanSquaredError` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTVideoEncoderSpecification_EnableLowLatencyRateControl` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTVideoEncoderSpecification_PreferredEncoderGPURegistryID` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTVideoEncoderSpecification_RequiredEncoderGPURegistryID` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTViewPackingKind_OverUnder` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `kVTViewPackingKind_SideBySide` | constant | `VTCompressionProperties.h` | Property key / profile constant is not exported in ffi; compression wrappers cover only a subset. |
-| `VTCompressionSessionEncodeFrameWithOutputHandler` | function | `VTCompressionSession.h` | Block-based output-handler variant is not wrapped. |
-| `VTCompressionSessionEncodeMultiImageFrame` | function | `VTCompressionSession.h` | Multi-image / stereo MV-HEVC encode path is not wrapped. |
-| `VTCompressionSessionEncodeMultiImageFrameWithOutputHandler` | function | `VTCompressionSession.h` | Block-based output-handler variant is not wrapped. |
-| `VTCompressionSessionOptionFlags` | options | `VTCompressionSession.h` | Typed flag alias is not exposed; current APIs use raw integers or fixed defaults. |
-| `VTIsStereoMVHEVCEncodeSupported` | function | `VTCompressionSession.h` | No public Rust or ffi wrapper exposes this top-level framework symbol. |
-| `kVTVideoEncoderSpecification_EncoderID` | constant | `VTCompressionSession.h` | CompressionSessionBuilder does not expose encoder-selection dictionaries. |
-| `kVTDecodeFrameOptionKey_ContentAnalyzerCropRectangle` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecodeFrameOptionKey_ContentAnalyzerRotation` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_AllowBitstreamToChangeFrameDimensions` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_ContentHasInterframeDependencies` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_DecoderProducesRAWOutput` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_DeinterlaceMode` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_FieldMode` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_GeneratePerFrameHDRDisplayMetadata` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_MaxOutputPresentationTimeStampOfFramesBeingDecoded` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_MaximizePowerEfficiency` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_MinOutputPresentationTimeStampOfFramesBeingDecoded` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_NumberOfFramesBeingDecoded` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_OnlyTheseFrames` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_OutputPoolRequestedMinimumBufferCount` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_PixelBufferPool` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_PixelBufferPoolIsShared` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_PixelFormatsWithReducedResolutionSupport` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_PixelTransferProperties` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_PropagatePerFrameHDRDisplayMetadata` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_ReducedCoefficientDecode` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_ReducedFrameDelivery` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_ReducedResolutionDecode` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_RequestRAWOutput` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_RequestedMVHEVCVideoLayerIDs` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_SuggestedQualityOfServiceTiers` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_SupportedPixelFormatsOrderedByPerformance` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_SupportedPixelFormatsOrderedByQuality` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_ThreadCount` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionPropertyKey_UsingGPURegistryID` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionProperty_DeinterlaceMode_Temporal` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionProperty_DeinterlaceMode_VerticalFilter` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionProperty_FieldMode_BothFields` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionProperty_FieldMode_BottomFieldOnly` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionProperty_FieldMode_DeinterlaceFields` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionProperty_FieldMode_SingleField` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionProperty_FieldMode_TopFieldOnly` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionProperty_OnlyTheseFrames_AllFrames` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionProperty_OnlyTheseFrames_IFrames` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionProperty_OnlyTheseFrames_KeyFrames` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionProperty_OnlyTheseFrames_NonDroppableFrames` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionProperty_TemporalLevelLimit` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionResolutionKey_Height` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTDecompressionResolutionKey_Width` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTVideoDecoderSpecification_PreferredDecoderGPURegistryID` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `kVTVideoDecoderSpecification_RequiredDecoderGPURegistryID` | constant | `VTDecompressionProperties.h` | Property key / decoder-specification constant is not exported in ffi. |
-| `VTDecompressionSessionDecodeFrameWithMultiImageCapableOutputHandler` | function | `VTDecompressionSession.h` | No public Rust or ffi wrapper exposes this top-level framework symbol. |
-| `VTDecompressionSessionDecodeFrameWithOptions` | function | `VTDecompressionSession.h` | Options-capable decode variants are not wrapped. |
-| `VTDecompressionSessionDecodeFrameWithOptionsAndOutputHandler` | function | `VTDecompressionSession.h` | Options-capable decode variants are not wrapped. |
-| `VTDecompressionSessionDecodeFrameWithOutputHandler` | function | `VTDecompressionSession.h` | Block-based output-handler variant is not wrapped. |
-| `VTDecompressionSessionSetMultiImageCallback` | function | `VTDecompressionSession.h` | Stereo / multi-image decode callback API is not wrapped. |
-| `VTIsStereoMVHEVCDecodeSupported` | function | `VTDecompressionSession.h` | No public Rust or ffi wrapper exposes this top-level framework symbol. |
-| `VTDecodeFrameFlags` | options | `VTErrors.h` | Typed flag alias is not exposed; current APIs use raw integers or fixed defaults. |
-| `VTDecodeInfoFlags` | options | `VTErrors.h` | Typed flag alias is not exposed; current APIs use raw integers or fixed defaults. |
 | `VTFrameRateConversionConfigurationQualityPrioritization` | enum | `VTFrameProcessor_FrameRateConversion.h` | Frame-processor wrappers do not expose this configuration enum. |
 | `VTFrameRateConversionConfigurationRevision` | enum | `VTFrameProcessor_FrameRateConversion.h` | Frame-processor wrappers do not expose this configuration enum. |
 | `VTMotionBlurConfigurationQualityPrioritization` | enum | `VTFrameProcessor_MotionBlur.h` | Frame-processor wrappers do not expose this configuration enum. |
@@ -454,15 +463,6 @@ Audit scope: top-level public VideoToolbox symbols from the macOS SDK headers on
 | `kVTExtensionProperties_ExtensionIdentifierKey` | constant | `VTUtilities.h` | utilities module omits supplemental decoder and extension-property helpers. |
 | `kVTExtensionProperties_ExtensionNameKey` | constant | `VTUtilities.h` | utilities module omits supplemental decoder and extension-property helpers. |
 | `kVTExtensionProperties_ExtensionURLKey` | constant | `VTUtilities.h` | utilities module omits supplemental decoder and extension-property helpers. |
-| `VTCopySupportedPropertyDictionaryForEncoder` | function | `VTVideoEncoderList.h` | encoder_list exposes basic fields only; this extended encoder-list symbol is not surfaced. |
-| `kVTVideoEncoderListOption_IncludeStandardDefinitionDVEncoders` | constant | `VTVideoEncoderList.h` | encoder_list exposes basic fields only; this extended encoder-list symbol is not surfaced. |
-| `kVTVideoEncoderList_GPURegistryID` | constant | `VTVideoEncoderList.h` | encoder_list exposes basic fields only; this extended encoder-list symbol is not surfaced. |
-| `kVTVideoEncoderList_InstanceLimit` | constant | `VTVideoEncoderList.h` | encoder_list exposes basic fields only; this extended encoder-list symbol is not surfaced. |
-| `kVTVideoEncoderList_IsHardwareAccelerated` | constant | `VTVideoEncoderList.h` | encoder_list exposes basic fields only; this extended encoder-list symbol is not surfaced. |
-| `kVTVideoEncoderList_PerformanceRating` | constant | `VTVideoEncoderList.h` | encoder_list exposes basic fields only; this extended encoder-list symbol is not surfaced. |
-| `kVTVideoEncoderList_QualityRating` | constant | `VTVideoEncoderList.h` | encoder_list exposes basic fields only; this extended encoder-list symbol is not surfaced. |
-| `kVTVideoEncoderList_SupportedSelectionProperties` | constant | `VTVideoEncoderList.h` | encoder_list exposes basic fields only; this extended encoder-list symbol is not surfaced. |
-| `kVTVideoEncoderList_SupportsFrameReordering` | constant | `VTVideoEncoderList.h` | encoder_list exposes basic fields only; this extended encoder-list symbol is not surfaced. |
 
 ## ⏭️ EXEMPT
 | Symbol | Kind | Header | Reason | SDK attribute |

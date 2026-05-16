@@ -13,6 +13,7 @@ use apple_cf::cf::{CFDictionary, CFType};
 use crate::error::VTError;
 use crate::ffi;
 use crate::session::{self, Codec};
+use crate::tagged_buffer_group::TaggedBufferGroup;
 
 /// One decoded video frame.
 pub struct DecodedFrame {
@@ -24,15 +25,31 @@ pub struct DecodedFrame {
     /// Presentation duration of the decoded frame.
     pub duration: (i64, i32),
     /// Decoder hint flags (asynchronous / image-buffer-modifiable / etc.).
-    pub info_flags: u32,
+    pub info_flags: ffi::VTDecodeInfoFlags,
+    /// Apple's decoder status code. 0 indicates success.
+    pub status: i32,
+}
+
+/// One decoded multi-image frame.
+pub struct DecodedMultiImageFrame {
+    /// Multi-image output (for example left/right eye pixel buffers).
+    pub tagged_buffer_group: Option<TaggedBufferGroup>,
+    /// Presentation timestamp of the source sample buffer.
+    pub presentation_time: (i64, i32),
+    /// Presentation duration of the decoded frame.
+    pub duration: (i64, i32),
+    /// Decoder hint flags (asynchronous / image-buffer-modifiable / etc.).
+    pub info_flags: ffi::VTDecodeInfoFlags,
     /// Apple's decoder status code. 0 indicates success.
     pub status: i32,
 }
 
 type DecodeCallback = Box<dyn FnMut(DecodedFrame) + Send + 'static>;
+type MultiImageDecodeCallback = Box<dyn FnMut(DecodedMultiImageFrame) + Send + 'static>;
 
 struct CallbackState {
     callback: Mutex<DecodeCallback>,
+    multi_image_callback: Mutex<Option<MultiImageDecodeCallback>>,
 }
 
 /// Hardware video decompression session.
@@ -48,7 +65,7 @@ struct CallbackState {
 /// `wait_for_async_frames()`.
 pub struct DecompressionSession {
     session: ffi::VTDecompressionSessionRef,
-    _state: Arc<CallbackState>,
+    state: Arc<CallbackState>,
 }
 
 unsafe impl Send for DecompressionSession {}
@@ -80,6 +97,13 @@ impl DecompressionSession {
         unsafe { ffi::VTIsHardwareDecodeSupported(codec.as_cm_codec_type()) != 0 }
     }
 
+    /// Returns `true` when the current machine advertises stereo MV-HEVC
+    /// decode support.
+    #[must_use]
+    pub fn is_stereo_mvhevc_decode_supported() -> bool {
+        unsafe { ffi::VTIsStereoMVHEVCDecodeSupported() != 0 }
+    }
+
     /// Open a decompression session for the given format description.
     /// `format_description` is the `CMFormatDescriptionRef` Apple expects
     /// — typically obtained from `CMSampleBuffer.format_description()` on
@@ -98,6 +122,7 @@ impl DecompressionSession {
     {
         let state = Arc::new(CallbackState {
             callback: Mutex::new(Box::new(callback)),
+            multi_image_callback: Mutex::new(None),
         });
         let state_for_callback = state.clone();
         let ref_con = Arc::into_raw(state_for_callback)
@@ -127,7 +152,7 @@ impl DecompressionSession {
         }
         Ok(Self {
             session,
-            _state: state,
+            state,
         })
     }
 
@@ -141,21 +166,86 @@ impl DecompressionSession {
     /// Returns [`VTError::EncoderCallback`] wrapping the raw `OSStatus`
     /// if `VTDecompressionSessionDecodeFrame` rejects the sample buffer.
     pub fn decode(&self, sample_buffer: &apple_cf::cm::CMSampleBuffer) -> Result<(), VTError> {
-        let mut info_flags: u32 = 0;
+        self.decode_with_options(sample_buffer, 0, None).map(|_| ())
+    }
+
+    /// Decode `sample_buffer` with explicit `VTDecodeFrameFlags` and optional
+    /// per-frame `kVTDecodeFrameOptionKey_*` entries.
+    ///
+    /// Returns the `VTDecodeInfoFlags` reported for the submit operation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::EncoderCallback`] wrapping the raw `OSStatus`
+    /// if `VTDecompressionSessionDecodeFrameWithOptions` rejects the sample buffer.
+    pub fn decode_with_options(
+        &self,
+        sample_buffer: &apple_cf::cm::CMSampleBuffer,
+        decode_flags: ffi::VTDecodeFrameFlags,
+        frame_options: Option<&CFDictionary>,
+    ) -> Result<ffi::VTDecodeInfoFlags, VTError> {
+        let mut info_flags: ffi::VTDecodeInfoFlags = 0;
         let status = unsafe {
-            ffi::VTDecompressionSessionDecodeFrame(
+            ffi::VTDecompressionSessionDecodeFrameWithOptions(
                 self.session,
                 sample_buffer.as_ptr(),
-                0,
+                decode_flags,
+                frame_options.map_or(ptr::null(), |dict| dict.as_ptr().cast_const()),
                 ptr::null_mut(),
                 &mut info_flags,
             )
         };
         if status == 0 {
-            Ok(())
+            Ok(info_flags)
         } else {
             Err(VTError::EncoderCallback(status))
         }
+    }
+
+    /// Install a callback that receives multi-image output when the decoder
+    /// produces a `CMTaggedBufferGroup` instead of a single `CVImageBuffer`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if the decoder rejects the callback.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the callback mutex is poisoned.
+    pub fn set_multi_image_callback<F>(&self, callback: F) -> Result<(), VTError>
+    where
+        F: FnMut(DecodedMultiImageFrame) + Send + 'static,
+    {
+        {
+            let mut slot = self
+                .state
+                .multi_image_callback
+                .lock()
+                .expect("decoder multi-image callback mutex poisoned");
+            *slot = Some(Box::new(callback));
+        }
+
+        let status = unsafe {
+            ffi::VTDecompressionSessionSetMultiImageCallback(
+                self.session,
+                decode_multi_image_trampoline,
+                Arc::as_ptr(&self.state).cast::<c_void>().cast_mut(),
+            )
+        };
+        if status != 0 {
+            let mut slot = self
+                .state
+                .multi_image_callback
+                .lock()
+                .expect("decoder multi-image callback mutex poisoned");
+            *slot = None;
+            drop(slot);
+            return Err(VTError::ApiFailed {
+                api: "VTDecompressionSessionSetMultiImageCallback",
+                status,
+            });
+        }
+        Ok(())
     }
 
     /// Wait for any queued async decodes to complete. Equivalent to
@@ -342,7 +432,7 @@ unsafe extern "C" fn decode_trampoline(
     output_ref_con: *mut c_void,
     _source_frame_ref_con: *mut c_void,
     status: ffi::OSStatus,
-    info_flags: u32,
+    info_flags: ffi::VTDecodeInfoFlags,
     image_buffer: *mut c_void,
     pts: ffi::CMTime,
     duration: ffi::CMTime,
@@ -376,4 +466,37 @@ unsafe extern "C" fn decode_trampoline(
         return;
     };
     guard(frame);
+}
+
+unsafe extern "C" fn decode_multi_image_trampoline(
+    output_ref_con: *mut c_void,
+    _source_frame_ref_con: *mut c_void,
+    status: ffi::OSStatus,
+    info_flags: ffi::VTDecodeInfoFlags,
+    tagged_buffer_group: ffi::CMTaggedBufferGroupRef,
+    pts: ffi::CMTime,
+    duration: ffi::CMTime,
+) {
+    if output_ref_con.is_null() {
+        return;
+    }
+    let state = unsafe { Arc::from_raw(output_ref_con.cast::<CallbackState>()) };
+    let state_clone = state.clone();
+    core::mem::forget(state);
+
+    let frame = DecodedMultiImageFrame {
+        tagged_buffer_group: unsafe { TaggedBufferGroup::from_raw_retained(tagged_buffer_group) },
+        presentation_time: (pts.value, pts.timescale),
+        duration: (duration.value, duration.timescale),
+        info_flags,
+        status,
+    };
+
+    let Ok(mut guard) = state_clone.multi_image_callback.lock() else {
+        return;
+    };
+    let Some(callback) = guard.as_mut() else {
+        return;
+    };
+    callback(frame);
 }

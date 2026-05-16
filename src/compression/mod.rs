@@ -14,6 +14,7 @@ use crate::error::VTError;
 use crate::ffi;
 use crate::multipass::MultiPassStorage;
 use crate::session::{self, Codec};
+use crate::tagged_buffer_group::TaggedBufferGroup;
 
 /// One encoded frame produced by [`CompressionSession::encode`].
 ///
@@ -310,6 +311,13 @@ impl CompressionSession {
         unsafe { ffi::VTCompressionSessionGetTypeID() }
     }
 
+    /// Returns `true` when the current system advertises stereo MV-HEVC
+    /// encode support.
+    #[must_use]
+    pub fn is_stereo_mvhevc_encode_supported() -> bool {
+        unsafe { ffi::VTIsStereoMVHEVCEncodeSupported() != 0 }
+    }
+
     /// Returns the current source-pixel-buffer pool, retaining it so the
     /// returned wrapper owns its lifetime independently of the session.
     #[must_use]
@@ -387,7 +395,11 @@ impl CompressionSession {
     ///
     /// Returns [`VTError::ApiFailed`] on a non-zero `OSStatus`.
     pub fn begin_pass(&self, final_pass: bool) -> Result<(), VTError> {
-        let flags = u32::from(final_pass);
+        let flags = if final_pass {
+            ffi::kVTCompressionSessionBeginFinalPass
+        } else {
+            0
+        };
         let status =
             unsafe { ffi::VTCompressionSessionBeginPass(self.session, flags, ptr::null_mut()) };
         if status == 0 {
@@ -570,7 +582,6 @@ impl CompressionSession {
         presentation_time: (i64, i32),
     ) -> Result<EncodedFrame, VTError> {
         let pixel_buffer = self.wrap_iosurface(surface)?;
-
         let pts = ffi::CMTime::new(presentation_time.0, presentation_time.1);
         let status = unsafe {
             ffi::VTCompressionSessionEncodeFrame(
@@ -584,14 +595,48 @@ impl CompressionSession {
             )
         };
         unsafe { ffi::CFRelease(pixel_buffer.cast()) };
-        if status != 0 {
-            return Err(VTError::EncodeFailed(status));
+        self.finish_encode(status)
+    }
+
+    /// Submit one multi-image frame (for example stereo MV-HEVC left/right eye
+    /// images) and block until the encoder has emitted it.
+    ///
+    /// The `tagged_buffer_group` is a `CoreMedia` `CMTaggedBufferGroup` containing
+    /// the images that make up one logical frame.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::EncodeFailed`] if the encoder rejects the frame or
+    /// [`VTError::EncoderCallback`] if the completion callback reports failure.
+    pub fn encode_multi_image(
+        &self,
+        tagged_buffer_group: &TaggedBufferGroup,
+        presentation_time: (i64, i32),
+    ) -> Result<EncodedFrame, VTError> {
+        let pts = ffi::CMTime::new(presentation_time.0, presentation_time.1);
+        let status = unsafe {
+            ffi::VTCompressionSessionEncodeMultiImageFrame(
+                self.session,
+                tagged_buffer_group.as_ptr(),
+                pts,
+                ffi::CMTime::INVALID,
+                ptr::null(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        };
+        self.finish_encode(status)
+    }
+
+    fn finish_encode(&self, encode_status: ffi::OSStatus) -> Result<EncodedFrame, VTError> {
+        if encode_status != 0 {
+            return Err(VTError::EncodeFailed(encode_status));
         }
 
-        let status =
+        let complete_status =
             unsafe { ffi::VTCompressionSessionCompleteFrames(self.session, ffi::CMTime::INVALID) };
-        if status != 0 {
-            return Err(VTError::CompleteFailed(status));
+        if complete_status != 0 {
+            return Err(VTError::CompleteFailed(complete_status));
         }
 
         let rx = self.state.out_rx.lock().expect("encoder rx mutex poisoned");
