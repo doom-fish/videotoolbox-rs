@@ -173,7 +173,11 @@ impl PixelRotationSession {
     pub fn set_rotation(&self, rotation: Rotation) -> Result<(), VTError> {
         let v = rotation.as_cf_string();
         let status = unsafe {
-            ffi::VTSessionSetProperty(self.session, ffi::kVTPixelRotationPropertyKey_Rotation, v.cast())
+            ffi::VTSessionSetProperty(
+                self.session,
+                ffi::kVTPixelRotationPropertyKey_Rotation,
+                v.cast(),
+            )
         };
         if status != 0 {
             return Err(VTError::SetPropertyFailed {

@@ -15,11 +15,7 @@ use crate::error::VTError;
 use crate::ffi;
 
 extern "C" {
-    fn vtb_motion_session_create(
-        width: u32,
-        height: u32,
-        out: *mut *mut c_void,
-    ) -> i32;
+    fn vtb_motion_session_create(width: u32, height: u32, out: *mut *mut c_void) -> i32;
     fn vtb_motion_session_release(session: *mut c_void);
     fn vtb_motion_session_estimate(
         session: *mut c_void,

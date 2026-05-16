@@ -111,7 +111,11 @@ extern "C" {
         encoding: u32,
     ) -> bool;
     pub fn CFStringGetLength(s: CFStringRef) -> isize;
-    pub fn CFNumberGetValue(num: CFNumberRef, the_type: CFNumberType, value_ptr: *mut c_void) -> bool;
+    pub fn CFNumberGetValue(
+        num: CFNumberRef,
+        the_type: CFNumberType,
+        value_ptr: *mut c_void,
+    ) -> bool;
 
     pub fn CFNumberCreate(
         allocator: CFAllocatorRef,
@@ -315,10 +319,7 @@ extern "C" {
     pub static kVTRotation_CCW90: CFStringRef;
 
     // ---- VTVideoEncoderList (v0.7) ----
-    pub fn VTCopyVideoEncoderList(
-        options: CFDictionaryRef,
-        list_out: *mut CFArrayRef,
-    ) -> OSStatus;
+    pub fn VTCopyVideoEncoderList(options: CFDictionaryRef, list_out: *mut CFArrayRef) -> OSStatus;
     pub static kVTVideoEncoderList_CodecType: CFStringRef;
     pub static kVTVideoEncoderList_EncoderID: CFStringRef;
     pub static kVTVideoEncoderList_CodecName: CFStringRef;

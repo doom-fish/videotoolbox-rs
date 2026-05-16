@@ -60,8 +60,8 @@ pub mod motion_estimation;
 #[cfg_attr(docsrs, doc(cfg(feature = "frame_processor")))]
 pub mod raw_processing;
 
-pub use error::VTError;
 pub use encoder_list::{available_video_encoders, VideoEncoder};
+pub use error::VTError;
 pub use hdr_metadata::HdrMetadataSession;
 pub use multipass::{FrameSilo, MultiPassStorage};
 pub use session::Codec;

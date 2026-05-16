@@ -11,12 +11,18 @@ use videotoolbox::{
 fn main() {
     let caps = frame_processor_capabilities();
     println!("Frame processor capabilities: {caps:?}");
-    println!("Super-res scale factors: {:?}", super_resolution_supported_scale_factors());
+    println!(
+        "Super-res scale factors: {:?}",
+        super_resolution_supported_scale_factors()
+    );
 
     // Motion estimation (macOS 26+).
     match MotionEstimationSession::new(1920, 1080) {
         Ok(session) => {
-            println!("✅ MotionEstimationSession 1920x1080 created at {:p}", session.as_ptr());
+            println!(
+                "✅ MotionEstimationSession 1920x1080 created at {:p}",
+                session.as_ptr()
+            );
         }
         Err(e) => println!("⚠️  MotionEstimationSession unavailable: {e:?}"),
     }
@@ -56,14 +62,20 @@ fn main() {
 
     if caps.low_latency_super_resolution {
         match FrameProcessor::start_low_latency_super_resolution(1280, 720, 2.0) {
-            Ok(p) => println!("✅ LowLatencySuperResolution 2x started at {:p}", p.as_ptr()),
+            Ok(p) => println!(
+                "✅ LowLatencySuperResolution 2x started at {:p}",
+                p.as_ptr()
+            ),
             Err(e) => println!("⚠️  LowLatencySuperResolution failed: {e:?}"),
         }
     }
 
     if caps.low_latency_frame_interpolation {
         match FrameProcessor::start_low_latency_frame_interpolation(1280, 720, 1) {
-            Ok(p) => println!("✅ LowLatencyFrameInterpolation started at {:p}", p.as_ptr()),
+            Ok(p) => println!(
+                "✅ LowLatencyFrameInterpolation started at {:p}",
+                p.as_ptr()
+            ),
             Err(e) => println!("⚠️  LowLatencyFrameInterpolation failed: {e:?}"),
         }
     }

@@ -288,9 +288,8 @@ impl FrameProcessor {
         frame_height: usize,
     ) -> Result<Self, crate::VTError> {
         let mut out: *mut core::ffi::c_void = core::ptr::null_mut();
-        let s = unsafe {
-            vt_optical_flow_start(frame_width as isize, frame_height as isize, &mut out)
-        };
+        let s =
+            unsafe { vt_optical_flow_start(frame_width as isize, frame_height as isize, &mut out) };
         Self::from_status(s, out)
     }
 

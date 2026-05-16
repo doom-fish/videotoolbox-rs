@@ -11,10 +11,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let nv12 = fcc(b"420v"); // kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
 
     // 1) Convert BGRA 1280x720 -> NV12 1280x720
-    let src = CVPixelBuffer::create(1280, 720, bgra)
-        .map_err(|s| format!("BGRA create failed: {s}"))?;
-    let dst = CVPixelBuffer::create(1280, 720, nv12)
-        .map_err(|s| format!("NV12 create failed: {s}"))?;
+    let src =
+        CVPixelBuffer::create(1280, 720, bgra).map_err(|s| format!("BGRA create failed: {s}"))?;
+    let dst =
+        CVPixelBuffer::create(1280, 720, nv12).map_err(|s| format!("NV12 create failed: {s}"))?;
 
     let xfer = PixelTransferSession::new()?;
     xfer.transfer(&src, &dst)?;

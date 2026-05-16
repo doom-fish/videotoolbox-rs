@@ -77,7 +77,11 @@ pub fn available_video_encoders() -> Result<Vec<VideoEncoder>, i32> {
     Ok(v)
 }
 
-#[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+#[allow(
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap
+)]
 unsafe fn cf_string_to_rust(s: ffi::CFStringRef) -> String {
     if s.is_null() {
         return String::new();

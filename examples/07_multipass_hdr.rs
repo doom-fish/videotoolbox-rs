@@ -14,7 +14,10 @@ fn main() {
     println!("✅ MultiPassStorage created at {:p}", storage.as_ptr());
 
     let hdr = HdrMetadataSession::new(30.0).expect("create HdrMetadataSession");
-    println!("✅ HdrMetadataSession (30 fps) created at {:p}", hdr.as_ptr());
+    println!(
+        "✅ HdrMetadataSession (30 fps) created at {:p}",
+        hdr.as_ptr()
+    );
 
     register_professional_workflow_decoders();
     register_professional_workflow_encoders();

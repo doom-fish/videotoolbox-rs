@@ -84,7 +84,9 @@ impl DecompressionSession {
             callback: Mutex::new(Box::new(callback)),
         });
         let state_for_callback = state.clone();
-        let ref_con = Arc::into_raw(state_for_callback).cast::<c_void>().cast_mut();
+        let ref_con = Arc::into_raw(state_for_callback)
+            .cast::<c_void>()
+            .cast_mut();
 
         let record = ffi::VTDecompressionOutputCallbackRecord {
             decompression_output_callback: decode_trampoline,
@@ -122,10 +124,7 @@ impl DecompressionSession {
     ///
     /// Returns [`VTError::EncoderCallback`] wrapping the raw `OSStatus`
     /// if `VTDecompressionSessionDecodeFrame` rejects the sample buffer.
-    pub fn decode(
-        &self,
-        sample_buffer: &apple_cf::cm::CMSampleBuffer,
-    ) -> Result<(), VTError> {
+    pub fn decode(&self, sample_buffer: &apple_cf::cm::CMSampleBuffer) -> Result<(), VTError> {
         let mut info_flags: u32 = 0;
         let status = unsafe {
             ffi::VTDecompressionSessionDecodeFrame(
@@ -152,8 +151,7 @@ impl DecompressionSession {
     ///
     /// Returns [`VTError::EncoderCallback`] on a non-zero `OSStatus`.
     pub fn wait_for_async_frames(&self) -> Result<(), VTError> {
-        let status =
-            unsafe { ffi::VTDecompressionSessionWaitForAsynchronousFrames(self.session) };
+        let status = unsafe { ffi::VTDecompressionSessionWaitForAsynchronousFrames(self.session) };
         if status == 0 {
             Ok(())
         } else {
@@ -205,9 +203,7 @@ impl DecompressionSession {
                 ffi::kCFBooleanFalse
             }
         };
-        unsafe {
-            self.set_property(ffi::kVTDecompressionPropertyKey_RealTime, v.cast())
-        }
+        unsafe { self.set_property(ffi::kVTDecompressionPropertyKey_RealTime, v.cast()) }
     }
 
     /// Suggest a maximum number of frames the decoder may keep
@@ -243,8 +239,7 @@ impl DecompressionSession {
     ///
     /// Returns [`VTError::EncoderCallback`] on non-zero `OSStatus`.
     pub fn finish_delayed_frames(&self) -> Result<(), VTError> {
-        let status =
-            unsafe { ffi::VTDecompressionSessionFinishDelayedFrames(self.session) };
+        let status = unsafe { ffi::VTDecompressionSessionFinishDelayedFrames(self.session) };
         if status == 0 {
             Ok(())
         } else {
