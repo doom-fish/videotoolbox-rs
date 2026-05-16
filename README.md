@@ -71,12 +71,17 @@ screencapturekit-rs ──► IOSurface ──► videotoolbox-rs ──► H.26
 ## Roadmap
 
 - [x] `VTCompressionSession` (encoder)
-- [ ] `VTDecompressionSession` (decoder)
-- [ ] `VTPixelTransferSession` (pixel format / colour space conversion)
-- [ ] `VTMultiPassStorage` (two-pass encoding for offline workflows)
+- [x] `VTDecompressionSession` (decoder)
+- [x] `VTPixelTransferSession` (pixel format / colour space conversion)
+- [x] `VTPixelRotationSession`
+- [x] `VTMultiPassStorage` + `VTFrameSilo` (two-pass encoding)
+- [x] `VTHDRPerFrameMetadataGenerationSession` (Dolby Vision metadata)
+- [x] `VTFrameProcessor` capability queries (super-resolution / optical flow detection)
+- [x] `VTProfessionalVideoWorkflow` decoder/encoder registration
+- [x] `VTCreateCGImageFromCVPixelBuffer`
+- [x] HEVC profile-level helpers
+- [ ] Full `VTFrameProcessor` pipeline (process frames with Metal command buffers — v0.10)
 - [ ] Async encode API via `VTCompressionSessionEncodeFrameWithOutputHandler`
-- [ ] HEVC profile-level helpers
-- [ ] HDR metadata support
 
 ## License
 

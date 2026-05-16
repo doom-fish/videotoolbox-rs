@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-05-16
+
+### Added
+
+- **`VTFrameSilo`** — multi-pass encoder sample-buffer storage
+  (`FrameSilo::new()`, `add_sample_buffer()`,
+  `progress_of_current_pass()`).
+- **`VTMultiPassStorage`** — encoder-private multi-pass scratch
+  storage (`MultiPassStorage::new()`); pass `as_ptr()` to a
+  `CompressionSession::set_property` with
+  `kVTCompressionPropertyKey_MultiPassStorage`.
+- **`VTHDRPerFrameMetadataGenerationSession`** — Dolby Vision per-
+  frame HDR metadata generation (`HdrMetadataSession::new(fps)`,
+  `attach_metadata()`). macOS 15+.
+- **`VTUtilities`** — `create_cg_image_from_pixel_buffer()` to turn
+  a decoded `CVPixelBuffer` into a `CGImageRef`.
+- **`VTProfessionalVideoWorkflow`** —
+  `register_professional_workflow_decoders()` and
+  `…_encoders()` (extra high-bit-depth ProRes support, etc.).
+- New `CMTimeRange` FFI struct alongside `CMTime`.
+- New example: `07_multipass_hdr` exercises all four surfaces.
+
+## [0.8.0] - 2026-05-15
+
+### Added
+
+- **`VTFrameProcessor` capability queries** (Swift bridge, opt-in
+  via `frame_processor` feature) — runtime detection of super-
+  resolution, motion blur, temporal noise filter, frame-rate
+  conversion, optical flow, and low-latency variants.
+- `super_resolution_supported_scale_factors()` returns the exact
+  upscale factors the system advertises.
+
 ## [0.2.0] - 2026-05-15
 
 ### Changed (BREAKING)

@@ -45,7 +45,10 @@ pub mod session;
 pub mod compression;
 pub mod decompression;
 pub mod encoder_list;
+pub mod hdr_metadata;
+pub mod multipass;
 pub mod transfer;
+pub mod utilities;
 
 #[cfg(feature = "frame_processor")]
 #[cfg_attr(docsrs, doc(cfg(feature = "frame_processor")))]
@@ -53,8 +56,14 @@ pub mod frame_processor;
 
 pub use error::VTError;
 pub use encoder_list::{available_video_encoders, VideoEncoder};
+pub use hdr_metadata::HdrMetadataSession;
+pub use multipass::{FrameSilo, MultiPassStorage};
 pub use session::Codec;
 pub use transfer::{PixelRotationSession, PixelTransferSession, Rotation};
+pub use utilities::{
+    create_cg_image_from_pixel_buffer, register_professional_workflow_decoders,
+    register_professional_workflow_encoders,
+};
 
 #[cfg(feature = "frame_processor")]
 pub use frame_processor::{

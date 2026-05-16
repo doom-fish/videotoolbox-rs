@@ -47,6 +47,20 @@ impl CMTime {
     };
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct CMTimeRange {
+    pub start: CMTime,
+    pub duration: CMTime,
+}
+
+impl CMTimeRange {
+    pub const INVALID: Self = Self {
+        start: CMTime::INVALID,
+        duration: CMTime::INVALID,
+    };
+}
+
 // CMVideoCodecType FourCC codes (ASCII bytes).
 pub const kCMVideoCodecType_H264: CMVideoCodecType = u32::from_be_bytes(*b"avc1");
 pub const kCMVideoCodecType_HEVC: CMVideoCodecType = u32::from_be_bytes(*b"hvc1");
@@ -310,9 +324,61 @@ extern "C" {
     pub static kVTVideoEncoderList_CodecName: CFStringRef;
     pub static kVTVideoEncoderList_EncoderName: CFStringRef;
     pub static kVTVideoEncoderList_DisplayName: CFStringRef;
+
+    // ---- VTFrameSilo (v0.9) ----
+    pub fn VTFrameSiloCreate(
+        allocator: CFAllocatorRef,
+        file_url: *const c_void,
+        time_range: CMTimeRange,
+        options: CFDictionaryRef,
+        silo_out: *mut VTFrameSiloRef,
+    ) -> OSStatus;
+    pub fn VTFrameSiloAddSampleBuffer(
+        silo: VTFrameSiloRef,
+        sample_buffer: CMSampleBufferRef,
+    ) -> OSStatus;
+    pub fn VTFrameSiloGetProgressOfCurrentPass(
+        silo: VTFrameSiloRef,
+        progress_out: *mut f32,
+    ) -> OSStatus;
+
+    // ---- VTMultiPassStorage (v0.9) ----
+    pub fn VTMultiPassStorageCreate(
+        allocator: CFAllocatorRef,
+        file_url: *const c_void,
+        time_range: CMTimeRange,
+        options: CFDictionaryRef,
+        storage_out: *mut VTMultiPassStorageRef,
+    ) -> OSStatus;
+    pub fn VTMultiPassStorageClose(storage: VTMultiPassStorageRef) -> OSStatus;
+
+    // ---- VTHDRPerFrameMetadataGenerationSession (v0.9) ----
+    pub fn VTHDRPerFrameMetadataGenerationSessionCreate(
+        allocator: CFAllocatorRef,
+        frames_per_second: f32,
+        options: CFDictionaryRef,
+        session_out: *mut VTHDRPerFrameMetadataGenerationSessionRef,
+    ) -> OSStatus;
+    pub fn VTHDRPerFrameMetadataGenerationSessionAttachMetadata(
+        session: VTHDRPerFrameMetadataGenerationSessionRef,
+        pixel_buffer: CVPixelBufferRef,
+        scene_change: bool,
+    ) -> OSStatus;
+
+    // ---- VTUtilities + VTProfessionalVideoWorkflow (v0.9) ----
+    pub fn VTCreateCGImageFromCVPixelBuffer(
+        pixel_buffer: CVPixelBufferRef,
+        options: CFDictionaryRef,
+        image_out: *mut *mut c_void,
+    ) -> OSStatus;
+    pub fn VTRegisterProfessionalVideoWorkflowVideoDecoders();
+    pub fn VTRegisterProfessionalVideoWorkflowVideoEncoders();
 }
 
 pub type CFArrayRef = *const c_void;
+pub type VTFrameSiloRef = *mut c_void;
+pub type VTMultiPassStorageRef = *mut c_void;
+pub type VTHDRPerFrameMetadataGenerationSessionRef = *mut c_void;
 
 pub type VTPixelTransferSessionRef = *mut c_void;
 pub type VTPixelRotationSessionRef = *mut c_void;
