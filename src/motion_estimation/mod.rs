@@ -242,5 +242,8 @@ fn build_creation_options(
 }
 
 fn retained_cf_type(raw: *mut c_void) -> CFType {
-    unsafe { CFType::from_raw_retained(raw).expect("VideoToolbox motion-estimation constant must be non-null") }
+    unsafe {
+        CFType::from_raw_retained(raw)
+            .expect("VideoToolbox motion-estimation constant must be non-null")
+    }
 }

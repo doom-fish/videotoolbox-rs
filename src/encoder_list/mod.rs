@@ -185,7 +185,8 @@ pub fn supported_property_dictionary_for_encoder(
         return Err(status);
     }
 
-    let encoder_id = CFString::from_raw(encoder_id_out.cast_mut()).map(|string| string.to_string_lossy());
+    let encoder_id =
+        CFString::from_raw(encoder_id_out.cast_mut()).map(|string| string.to_string_lossy());
     let supported_properties = CFDictionary::from_raw(supported_properties_out.cast_mut());
 
     Ok(EncoderSupportedProperties {
@@ -225,7 +226,8 @@ unsafe fn parse_video_encoder_details(dict: *const c_void) -> VideoEncoderDetail
             display_name,
         },
         gpu_registry_id: unsafe {
-            let value = ffi::CFDictionaryGetValue(dict, ffi::kVTVideoEncoderList_GPURegistryID.cast());
+            let value =
+                ffi::CFDictionaryGetValue(dict, ffi::kVTVideoEncoderList_GPURegistryID.cast());
             cf_number_u64(value)
         },
         supported_selection_properties: unsafe {
@@ -236,18 +238,18 @@ unsafe fn parse_video_encoder_details(dict: *const c_void) -> VideoEncoderDetail
             cf_dictionary(value)
         },
         performance_rating: unsafe {
-            let value = ffi::CFDictionaryGetValue(
-                dict,
-                ffi::kVTVideoEncoderList_PerformanceRating.cast(),
-            );
+            let value =
+                ffi::CFDictionaryGetValue(dict, ffi::kVTVideoEncoderList_PerformanceRating.cast());
             cf_number_i64(value)
         },
         quality_rating: unsafe {
-            let value = ffi::CFDictionaryGetValue(dict, ffi::kVTVideoEncoderList_QualityRating.cast());
+            let value =
+                ffi::CFDictionaryGetValue(dict, ffi::kVTVideoEncoderList_QualityRating.cast());
             cf_number_i64(value)
         },
         instance_limit: unsafe {
-            let value = ffi::CFDictionaryGetValue(dict, ffi::kVTVideoEncoderList_InstanceLimit.cast());
+            let value =
+                ffi::CFDictionaryGetValue(dict, ffi::kVTVideoEncoderList_InstanceLimit.cast());
             cf_bool(value)
         },
         is_hardware_accelerated: unsafe {

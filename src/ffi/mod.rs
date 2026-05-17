@@ -404,16 +404,21 @@ extern "C" {
     pub static kVTCompressionPreset_HighQuality: CFStringRef;
     pub static kVTCompressionPreset_HighSpeed: CFStringRef;
     pub static kVTCompressionPreset_VideoConferencing: CFStringRef;
-    pub static kVTCompressionPropertyCameraCalibrationKey_ExtrinsicOrientationQuaternion: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_ExtrinsicOrientationQuaternion:
+        CFStringRef;
     pub static kVTCompressionPropertyCameraCalibrationKey_ExtrinsicOriginSource: CFStringRef;
     pub static kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrix: CFStringRef;
-    pub static kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrixProjectionOffset: CFStringRef;
-    pub static kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrixReferenceDimensions: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrixProjectionOffset:
+        CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_IntrinsicMatrixReferenceDimensions:
+        CFStringRef;
     pub static kVTCompressionPropertyCameraCalibrationKey_LensAlgorithmKind: CFStringRef;
     pub static kVTCompressionPropertyCameraCalibrationKey_LensDistortions: CFStringRef;
     pub static kVTCompressionPropertyCameraCalibrationKey_LensDomain: CFStringRef;
-    pub static kVTCompressionPropertyCameraCalibrationKey_LensFrameAdjustmentsPolynomialX: CFStringRef;
-    pub static kVTCompressionPropertyCameraCalibrationKey_LensFrameAdjustmentsPolynomialY: CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_LensFrameAdjustmentsPolynomialX:
+        CFStringRef;
+    pub static kVTCompressionPropertyCameraCalibrationKey_LensFrameAdjustmentsPolynomialY:
+        CFStringRef;
     pub static kVTCompressionPropertyCameraCalibrationKey_LensIdentifier: CFStringRef;
     pub static kVTCompressionPropertyCameraCalibrationKey_LensRole: CFStringRef;
     pub static kVTCompressionPropertyCameraCalibrationKey_RadialAngleLimit: CFStringRef;
@@ -468,8 +473,10 @@ extern "C" {
     pub static kVTCompressionPropertyKey_ProgressiveScan: CFStringRef;
     pub static kVTCompressionPropertyKey_ProjectionKind: CFStringRef;
     pub static kVTCompressionPropertyKey_RecommendedParallelizationLimit: CFStringRef;
-    pub static kVTCompressionPropertyKey_RecommendedParallelizedSubdivisionMinimumDuration: CFStringRef;
-    pub static kVTCompressionPropertyKey_RecommendedParallelizedSubdivisionMinimumFrameCount: CFStringRef;
+    pub static kVTCompressionPropertyKey_RecommendedParallelizedSubdivisionMinimumDuration:
+        CFStringRef;
+    pub static kVTCompressionPropertyKey_RecommendedParallelizedSubdivisionMinimumFrameCount:
+        CFStringRef;
     pub static kVTCompressionPropertyKey_ReferenceBufferCount: CFStringRef;
     pub static kVTCompressionPropertyKey_SourceFrameCount: CFStringRef;
     pub static kVTCompressionPropertyKey_SpatialAdaptiveQPLevel: CFStringRef;
@@ -657,9 +664,11 @@ extern "C" {
     pub static kVTDecompressionPropertyKey_DeinterlaceMode: CFStringRef;
     pub static kVTDecompressionPropertyKey_FieldMode: CFStringRef;
     pub static kVTDecompressionPropertyKey_GeneratePerFrameHDRDisplayMetadata: CFStringRef;
-    pub static kVTDecompressionPropertyKey_MaxOutputPresentationTimeStampOfFramesBeingDecoded: CFStringRef;
+    pub static kVTDecompressionPropertyKey_MaxOutputPresentationTimeStampOfFramesBeingDecoded:
+        CFStringRef;
     pub static kVTDecompressionPropertyKey_MaximizePowerEfficiency: CFStringRef;
-    pub static kVTDecompressionPropertyKey_MinOutputPresentationTimeStampOfFramesBeingDecoded: CFStringRef;
+    pub static kVTDecompressionPropertyKey_MinOutputPresentationTimeStampOfFramesBeingDecoded:
+        CFStringRef;
     pub static kVTDecompressionPropertyKey_NumberOfFramesBeingDecoded: CFStringRef;
     pub static kVTDecompressionPropertyKey_OnlyTheseFrames: CFStringRef;
     pub static kVTDecompressionPropertyKey_OutputPoolRequestedMinimumBufferCount: CFStringRef;

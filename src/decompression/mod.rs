@@ -150,10 +150,7 @@ impl DecompressionSession {
             unsafe { Arc::from_raw(ref_con.cast::<CallbackState>()) };
             return Err(VTError::EncoderCallback(status));
         }
-        Ok(Self {
-            session,
-            state,
-        })
+        Ok(Self { session, state })
     }
 
     /// Decode `sample_buffer`. The callback you registered at construction

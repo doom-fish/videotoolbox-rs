@@ -21,7 +21,9 @@ pub enum HdrMetadataFormat {
 impl HdrMetadataFormat {
     fn as_cf_string(self) -> ffi::VTHDRPerFrameMetadataGenerationHDRFormatType {
         match self {
-            Self::DolbyVision => unsafe { ffi::kVTHDRPerFrameMetadataGenerationHDRFormatType_DolbyVision },
+            Self::DolbyVision => unsafe {
+                ffi::kVTHDRPerFrameMetadataGenerationHDRFormatType_DolbyVision
+            },
         }
     }
 }
@@ -131,10 +133,18 @@ fn build_hdr_options(hdr_formats: &[HdrMetadataFormat]) -> Option<CFDictionary> 
         .iter()
         .map(|format| retained_cf_type(format.as_cf_string().cast_mut()))
         .collect();
-    let format_refs: Vec<&dyn AsCFType> = formats.iter().map(|format| format as &dyn AsCFType).collect();
+    let format_refs: Vec<&dyn AsCFType> = formats
+        .iter()
+        .map(|format| format as &dyn AsCFType)
+        .collect();
     let array = CFArray::from_values(&format_refs);
-    let key = retained_cf_type(unsafe { ffi::kVTHDRPerFrameMetadataGenerationOptionsKey_HDRFormats.cast_mut() });
-    Some(CFDictionary::from_pairs(&[(&key as &dyn AsCFType, &array as &dyn AsCFType)]))
+    let key = retained_cf_type(unsafe {
+        ffi::kVTHDRPerFrameMetadataGenerationOptionsKey_HDRFormats.cast_mut()
+    });
+    Some(CFDictionary::from_pairs(&[(
+        &key as &dyn AsCFType,
+        &array as &dyn AsCFType,
+    )]))
 }
 
 fn retained_cf_type(raw: *mut c_void) -> CFType {

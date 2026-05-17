@@ -1,11 +1,14 @@
-use apple_cf::{cf::CFDictionary, cm::{CMFormatDescription, CMSampleBuffer}};
+use apple_cf::{
+    cf::CFDictionary,
+    cm::{CMFormatDescription, CMSampleBuffer},
+};
 #[cfg(feature = "frame_processor")]
 use apple_cf::{cf::CFType, cv::CVPixelBuffer};
 use videotoolbox::{
-    available_video_encoder_details, available_video_encoder_details_with_options,
+    available_video_encoder_details, available_video_encoder_details_with_options, ffi,
     supported_property_dictionary_for_encoder, Codec, CompressionSession, DecompressionSession,
     EncodedFrame, EncoderSupportedProperties, TaggedBufferGroup, VTError, VideoEncoderDetails,
-    VideoEncoderListOptions, ffi,
+    VideoEncoderListOptions,
 };
 
 const TARGET_FFI_SYMBOLS: &[&str] = &[
@@ -253,7 +256,10 @@ fn targeted_ffi_gap_symbols_are_present() {
         .iter()
         .chain(TARGET_FFI_SYMBOLS_V0_11_2.iter())
     {
-        assert!(ffi_src.contains(symbol), "{symbol} missing from src/ffi/mod.rs");
+        assert!(
+            ffi_src.contains(symbol),
+            "{symbol} missing from src/ffi/mod.rs"
+        );
     }
 }
 
@@ -265,10 +271,8 @@ type DecodeWithOptionsFn = fn(
     ffi::VTDecodeFrameFlags,
     Option<&CFDictionary>,
 ) -> Result<ffi::VTDecodeInfoFlags, VTError>;
-type SetMultiImageCallbackFn = fn(
-    &DecompressionSession,
-    fn(videotoolbox::DecodedMultiImageFrame),
-) -> Result<(), VTError>;
+type SetMultiImageCallbackFn =
+    fn(&DecompressionSession, fn(videotoolbox::DecodedMultiImageFrame)) -> Result<(), VTError>;
 type EncoderDetailsFn = fn() -> Result<Vec<VideoEncoderDetails>, i32>;
 type EncoderDetailsWithOptionsFn =
     fn(&VideoEncoderListOptions) -> Result<Vec<VideoEncoderDetails>, i32>;
@@ -278,8 +282,10 @@ type SupportedPropertyDictionaryFn =
 #[test]
 fn new_safe_wrappers_are_reachable() {
     let encode_multi_image_fn: EncodeMultiImageFn = CompressionSession::encode_multi_image;
-    let stereo_encode_support_fn: fn() -> bool = CompressionSession::is_stereo_mvhevc_encode_supported;
-    let stereo_decode_support_fn: fn() -> bool = DecompressionSession::is_stereo_mvhevc_decode_supported;
+    let stereo_encode_support_fn: fn() -> bool =
+        CompressionSession::is_stereo_mvhevc_encode_supported;
+    let stereo_decode_support_fn: fn() -> bool =
+        DecompressionSession::is_stereo_mvhevc_decode_supported;
     let decode_with_options_fn: DecodeWithOptionsFn = DecompressionSession::decode_with_options;
     let set_multi_image_callback_fn: SetMultiImageCallbackFn =
         DecompressionSession::set_multi_image_callback::<fn(videotoolbox::DecodedMultiImageFrame)>;
@@ -294,15 +300,19 @@ fn new_safe_wrappers_are_reachable() {
     let hdr_new_with_formats_fn: fn(
         f32,
         &[videotoolbox::hdr_metadata::HdrMetadataFormat],
-    ) -> Result<videotoolbox::hdr_metadata::HdrMetadataSession, VTError> =
-        videotoolbox::hdr_metadata::HdrMetadataSession::new_with_formats;
+    ) -> Result<
+        videotoolbox::hdr_metadata::HdrMetadataSession,
+        VTError,
+    > = videotoolbox::hdr_metadata::HdrMetadataSession::new_with_formats;
     let register_supplemental_decoder_fn: fn(Codec) =
         videotoolbox::utilities::register_supplemental_video_decoder_if_available;
-    let copy_decoder_extension_properties_fn:
-        fn(&CMFormatDescription) -> Result<CFDictionary, VTError> =
+    let copy_decoder_extension_properties_fn: fn(
+        &CMFormatDescription,
+    ) -> Result<CFDictionary, VTError> =
         videotoolbox::utilities::copy_video_decoder_extension_properties;
-    let copy_raw_processor_extension_properties_fn:
-        fn(&CMFormatDescription) -> Result<CFDictionary, VTError> =
+    let copy_raw_processor_extension_properties_fn: fn(
+        &CMFormatDescription,
+    ) -> Result<CFDictionary, VTError> =
         videotoolbox::utilities::copy_raw_processor_extension_properties;
     let _ = videotoolbox::hdr_metadata::HdrMetadataFormat::DolbyVision;
 
@@ -328,17 +338,19 @@ fn new_safe_wrappers_are_reachable() {
 #[cfg(feature = "frame_processor")]
 #[test]
 fn new_frame_processor_safe_wrappers_are_reachable() {
-    type MotionNewWithOptionsFn = fn(
-        u32,
-        u32,
-        &videotoolbox::motion_estimation::MotionEstimationSessionOptions,
-    ) -> Result<videotoolbox::motion_estimation::MotionEstimationSession, VTError>;
-    type MotionEstimateWithOptionsFn = fn(
-        &videotoolbox::motion_estimation::MotionEstimationSession,
-        &CVPixelBuffer,
-        &CVPixelBuffer,
-        ffi::VTMotionEstimationFrameFlags,
-    ) -> Result<videotoolbox::motion_estimation::MotionEstimationResult, VTError>;
+    type MotionNewWithOptionsFn =
+        fn(
+            u32,
+            u32,
+            &videotoolbox::motion_estimation::MotionEstimationSessionOptions,
+        ) -> Result<videotoolbox::motion_estimation::MotionEstimationSession, VTError>;
+    type MotionEstimateWithOptionsFn =
+        fn(
+            &videotoolbox::motion_estimation::MotionEstimationSession,
+            &CVPixelBuffer,
+            &CVPixelBuffer,
+            ffi::VTMotionEstimationFrameFlags,
+        ) -> Result<videotoolbox::motion_estimation::MotionEstimationResult, VTError>;
     type RawSetParameterChangedHandlerFn = fn(
         &videotoolbox::raw_processing::RawProcessingSession,
         fn(Vec<videotoolbox::raw_processing::RawProcessingParameter>),
@@ -362,22 +374,27 @@ fn new_frame_processor_safe_wrappers_are_reachable() {
 
     let super_resolution_model_status_fn: fn(
         videotoolbox::frame_processor::SuperResolutionConfiguration,
-    ) -> Option<videotoolbox::frame_processor::SuperResolutionModelStatus> =
-        videotoolbox::frame_processor::super_resolution_model_status_for_configuration;
+    ) -> Option<
+        videotoolbox::frame_processor::SuperResolutionModelStatus,
+    > = videotoolbox::frame_processor::super_resolution_model_status_for_configuration;
     let super_resolution_model_percentage_available_fn: fn(
         videotoolbox::frame_processor::SuperResolutionConfiguration,
     ) -> Option<f32> =
         videotoolbox::frame_processor::super_resolution_model_percentage_available_for_configuration;
-    let download_super_resolution_model_fn:
-        fn(videotoolbox::frame_processor::SuperResolutionConfiguration) -> Result<(), VTError> =
+    let download_super_resolution_model_fn: fn(
+        videotoolbox::frame_processor::SuperResolutionConfiguration,
+    ) -> Result<(), VTError> =
         videotoolbox::frame_processor::download_super_resolution_model_for_configuration;
     let start_super_resolution_fn: fn(
         videotoolbox::frame_processor::SuperResolutionConfiguration,
-    ) -> Result<videotoolbox::frame_processor::FrameProcessor, VTError> =
-        videotoolbox::frame_processor::FrameProcessor::start_super_resolution_with_configuration;
+    ) -> Result<
+        videotoolbox::frame_processor::FrameProcessor,
+        VTError,
+    > = videotoolbox::frame_processor::FrameProcessor::start_super_resolution_with_configuration;
     let start_motion_blur_fn: fn(
         videotoolbox::frame_processor::MotionBlurConfiguration,
-    ) -> Result<videotoolbox::frame_processor::FrameProcessor, VTError> =
+    )
+        -> Result<videotoolbox::frame_processor::FrameProcessor, VTError> =
         videotoolbox::frame_processor::FrameProcessor::start_motion_blur_with_configuration;
     let start_frame_rate_conversion_fn: fn(
         videotoolbox::frame_processor::FrameRateConversionConfiguration,
@@ -385,29 +402,36 @@ fn new_frame_processor_safe_wrappers_are_reachable() {
         videotoolbox::frame_processor::FrameProcessor::start_frame_rate_conversion_with_configuration;
     let start_optical_flow_fn: fn(
         videotoolbox::frame_processor::OpticalFlowConfiguration,
-    ) -> Result<videotoolbox::frame_processor::FrameProcessor, VTError> =
-        videotoolbox::frame_processor::FrameProcessor::start_optical_flow_with_configuration;
-    let motion_type_id_fn: fn() -> usize = videotoolbox::motion_estimation::MotionEstimationSession::type_id;
+    ) -> Result<
+        videotoolbox::frame_processor::FrameProcessor,
+        VTError,
+    > = videotoolbox::frame_processor::FrameProcessor::start_optical_flow_with_configuration;
+    let motion_type_id_fn: fn() -> usize =
+        videotoolbox::motion_estimation::MotionEstimationSession::type_id;
     let motion_new_with_options_fn: MotionNewWithOptionsFn =
         videotoolbox::motion_estimation::MotionEstimationSession::new_with_options;
     let motion_estimate_with_options_fn: MotionEstimateWithOptionsFn =
         videotoolbox::motion_estimation::MotionEstimationSession::estimate_with_options;
     let raw_type_id_fn: fn() -> usize = videotoolbox::raw_processing::RawProcessingSession::type_id;
-    let raw_metadata_for_sidecar_file_fn:
-        fn(&videotoolbox::raw_processing::RawProcessingSession) -> Result<Option<CFType>, VTError> =
+    let raw_metadata_for_sidecar_file_fn: fn(
+        &videotoolbox::raw_processing::RawProcessingSession,
+    ) -> Result<Option<CFType>, VTError> =
         videotoolbox::raw_processing::RawProcessingSession::metadata_for_sidecar_file;
-    let raw_metal_device_registry_id_fn:
-        fn(&videotoolbox::raw_processing::RawProcessingSession) -> Result<Option<CFType>, VTError> =
+    let raw_metal_device_registry_id_fn: fn(
+        &videotoolbox::raw_processing::RawProcessingSession,
+    ) -> Result<Option<CFType>, VTError> =
         videotoolbox::raw_processing::RawProcessingSession::metal_device_registry_id;
-    let raw_output_color_attachments_fn:
-        fn(&videotoolbox::raw_processing::RawProcessingSession) -> Result<Option<CFType>, VTError> =
+    let raw_output_color_attachments_fn: fn(
+        &videotoolbox::raw_processing::RawProcessingSession,
+    ) -> Result<Option<CFType>, VTError> =
         videotoolbox::raw_processing::RawProcessingSession::output_color_attachments;
     let raw_set_parameter_changed_handler_fn: RawSetParameterChangedHandlerFn =
         videotoolbox::raw_processing::RawProcessingSession::set_parameter_changed_handler::<
             fn(Vec<videotoolbox::raw_processing::RawProcessingParameter>),
         >;
-    let raw_clear_parameter_changed_handler_fn:
-        fn(&videotoolbox::raw_processing::RawProcessingSession) -> Result<(), VTError> =
+    let raw_clear_parameter_changed_handler_fn: fn(
+        &videotoolbox::raw_processing::RawProcessingSession,
+    ) -> Result<(), VTError> =
         videotoolbox::raw_processing::RawProcessingSession::clear_parameter_changed_handler;
 
     let _ = (

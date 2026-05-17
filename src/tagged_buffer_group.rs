@@ -97,7 +97,8 @@ impl TaggedBufferGroup {
 
 impl Clone for TaggedBufferGroup {
     fn clone(&self) -> Self {
-        unsafe { Self::from_raw_retained(self.inner) }.expect("tagged buffer group pointer must be non-null")
+        unsafe { Self::from_raw_retained(self.inner) }
+            .expect("tagged buffer group pointer must be non-null")
     }
 }
 

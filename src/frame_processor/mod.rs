@@ -385,7 +385,8 @@ impl SuperResolutionConfiguration {
             scale_factor,
             use_precomputed_flow: false,
             input_type: VTSuperResolutionScalerConfigurationInputType::Video,
-            quality_prioritization: VTSuperResolutionScalerConfigurationQualityPrioritization::Normal,
+            quality_prioritization:
+                VTSuperResolutionScalerConfigurationQualityPrioritization::Normal,
             revision: VTSuperResolutionScalerConfigurationRevision::Revision1,
         }
     }
@@ -1370,7 +1371,8 @@ fn default_super_resolution_configuration(
     use_precomputed_flow: bool,
     input_is_image: bool,
 ) -> SuperResolutionConfiguration {
-    let mut configuration = SuperResolutionConfiguration::new(frame_width, frame_height, scale_factor);
+    let mut configuration =
+        SuperResolutionConfiguration::new(frame_width, frame_height, scale_factor);
     configuration.use_precomputed_flow = use_precomputed_flow;
     configuration.input_type = if input_is_image {
         VTSuperResolutionScalerConfigurationInputType::Image

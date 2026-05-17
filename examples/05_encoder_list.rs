@@ -26,9 +26,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    let properties =
-        supported_property_dictionary_for_encoder(1920, 1080, Codec::H264, None)
-            .map_err(|s| format!("status {s}"))?;
+    let properties = supported_property_dictionary_for_encoder(1920, 1080, Codec::H264, None)
+        .map_err(|s| format!("status {s}"))?;
     println!(
         "selected encoder {:?} exposes {} supported properties",
         properties.encoder_id,
