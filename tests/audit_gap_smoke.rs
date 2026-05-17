@@ -337,6 +337,7 @@ fn new_safe_wrappers_are_reachable() {
 
 #[cfg(feature = "frame_processor")]
 #[test]
+#[allow(clippy::too_many_lines)]
 fn new_frame_processor_safe_wrappers_are_reachable() {
     type MotionNewWithOptionsFn =
         fn(
