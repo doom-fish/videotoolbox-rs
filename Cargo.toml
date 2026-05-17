@@ -50,7 +50,7 @@ all-features-flag = ["compression", "decompression", "frame_processor"]
 
 [dependencies]
 apple-cf = { path = "../apple-cf-rs", version = ">=0.6, <0.8", default-features = false, features = ["cm", "iosurface", "cv"] }
-apple-metal = { path = "../apple-metal-rs", version = ">=0.6, <0.8", default-features = false, optional = true }
+apple-metal = { path = "../apple-metal-rs", version = ">=0.6, <0.9", default-features = false, optional = true }
 
 [dev-dependencies]
 regex-lite = "0.1"
