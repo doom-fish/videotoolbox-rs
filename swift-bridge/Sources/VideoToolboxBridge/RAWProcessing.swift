@@ -5,10 +5,25 @@
 // `src/ffi/mod.rs` (the Swift overlay hides them with
 // `CF_REFINED_FOR_SWIFT`, but they remain linkable from C/Rust).
 
+import CoreFoundation
 import CoreMedia
 import CoreVideo
 import Foundation
 import VideoToolbox
+
+public typealias VTBRawParameterChangedCallback = @convention(c) (
+    UnsafeMutableRawPointer?,
+    CFArray?
+) -> Void
+
+typealias VTBRawParameterChangedHandler = @convention(block) (CFArray?) -> Void
+
+@available(macOS 26.0, *)
+@_silgen_name("VTRAWProcessingSessionSetParameterChangedHandler")
+private func vtb_raw_processing_session_set_parameter_changed_handler(
+    _ session: VTRAWProcessingSession,
+    _ parameterChangedHandler: VTBRawParameterChangedHandler?
+) -> OSStatus
 
 /// Asynchronously process a single RAW frame, returning the
 /// processed `CVPixelBuffer` (retained +1) via `out`.
@@ -28,6 +43,25 @@ public func vtb_raw_session_process_frame(
                 out.pointee = vtb_retain(processed)
             }
         )
+    }
+    return VTB_NOT_SUPPORTED
+}
+
+/// Install or clear the RAW-parameter change handler.
+@_cdecl("vtb_raw_session_set_parameter_changed_handler")
+public func vtb_raw_session_set_parameter_changed_handler(
+    _ session: UnsafeMutableRawPointer,
+    _ refcon: UnsafeMutableRawPointer?,
+    _ callback: VTBRawParameterChangedCallback?
+) -> Int32 {
+    if #available(macOS 26.0, *) {
+        let s: VTRAWProcessingSession = vtb_borrow(session)
+        let handler = callback.map { callback in
+            { (newParameters: CFArray?) in
+                callback(refcon, newParameters)
+            }
+        }
+        return vtb_raw_processing_session_set_parameter_changed_handler(s, handler)
     }
     return VTB_NOT_SUPPORTED
 }

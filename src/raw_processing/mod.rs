@@ -9,12 +9,13 @@
 
 use core::ffi::c_void;
 use core::ptr;
+use std::sync::Mutex;
 
-use apple_cf::cm::CMFormatDescription;
-use apple_cf::cv::CVPixelBuffer;
+use apple_cf::{cf::CFType, cm::CMFormatDescription, cv::CVPixelBuffer};
 
 use crate::error::VTError;
 use crate::ffi;
+use crate::session;
 
 extern "C" {
     fn vtb_raw_session_process_frame(
@@ -22,11 +23,19 @@ extern "C" {
         input_pixel_buffer: *mut c_void,
         out: *mut *mut c_void,
     ) -> i32;
+    fn vtb_raw_session_set_parameter_changed_handler(
+        session: *mut c_void,
+        refcon: *mut c_void,
+        callback: Option<unsafe extern "C" fn(*mut c_void, ffi::CFArrayRef)>,
+    ) -> i32;
 }
+
+type ParameterChangedCallback = Box<dyn FnMut(Vec<RawProcessingParameter>) + Send + 'static>;
 
 /// `VTRAWProcessingSessionRef`.
 pub struct RawProcessingSession {
     inner: ffi::VTRAWProcessingSessionRef,
+    parameter_changed_handler: Mutex<Option<*mut ParameterChangedCallback>>,
 }
 
 unsafe impl Send for RawProcessingSession {}
@@ -35,6 +44,20 @@ unsafe impl Sync for RawProcessingSession {}
 impl Drop for RawProcessingSession {
     fn drop(&mut self) {
         if !self.inner.is_null() {
+            let raw = match self.parameter_changed_handler.lock() {
+                Ok(mut handler) => handler.take(),
+                Err(poisoned) => poisoned.into_inner().take(),
+            };
+            if let Some(raw) = raw {
+                unsafe {
+                    let _ = vtb_raw_session_set_parameter_changed_handler(
+                        self.inner.cast(),
+                        ptr::null_mut(),
+                        None,
+                    );
+                    drop(Box::from_raw(raw));
+                }
+            }
             unsafe {
                 ffi::VTRAWProcessingSessionInvalidate(self.inner);
                 ffi::CFRelease(self.inner.cast());
@@ -45,6 +68,12 @@ impl Drop for RawProcessingSession {
 }
 
 impl RawProcessingSession {
+    /// CoreFoundation type identifier for `VTRAWProcessingSession`.
+    #[must_use]
+    pub fn type_id() -> usize {
+        unsafe { ffi::VTRAWProcessingSessionGetTypeID() }
+    }
+
     /// Create a RAW processing session for the given video format.
     ///
     /// # Errors
@@ -64,7 +93,10 @@ impl RawProcessingSession {
         if s != 0 || p.is_null() {
             return Err(VTError::SessionCreateFailed(s));
         }
-        Ok(Self { inner: p })
+        Ok(Self {
+            inner: p,
+            parameter_changed_handler: Mutex::new(None),
+        })
     }
 
     /// Force-complete any outstanding frames.
@@ -81,6 +113,46 @@ impl RawProcessingSession {
         }
     }
 
+    /// Copy a raw `VTSession` property from the underlying RAW processing session.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if `VTSessionCopyProperty` fails.
+    ///
+    /// # Safety
+    ///
+    /// `key` must be a valid `CFStringRef` exported by `VideoToolbox`.
+    pub unsafe fn copy_property(&self, key: ffi::CFStringRef) -> Result<Option<CFType>, VTError> {
+        unsafe { session::copy_property(self.inner.cast(), key) }
+    }
+
+    /// Copy the sidecar-file metadata blob, when the active RAW processor exposes it.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if `VTSessionCopyProperty` fails.
+    pub fn metadata_for_sidecar_file(&self) -> Result<Option<CFType>, VTError> {
+        unsafe { self.copy_property(ffi::kVTRAWProcessingPropertyKey_MetadataForSidecarFile) }
+    }
+
+    /// Copy the requested Metal-device registry ID, when the active RAW processor exposes it.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if `VTSessionCopyProperty` fails.
+    pub fn metal_device_registry_id(&self) -> Result<Option<CFType>, VTError> {
+        unsafe { self.copy_property(ffi::kVTRAWProcessingPropertyKey_MetalDeviceRegistryID) }
+    }
+
+    /// Copy the output color-attachment dictionary, when the active RAW processor exposes it.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] if `VTSessionCopyProperty` fails.
+    pub fn output_color_attachments(&self) -> Result<Option<CFType>, VTError> {
+        unsafe { self.copy_property(ffi::kVTRAWProcessingPropertyKey_OutputColorAttachments) }
+    }
+
     /// Copy the array of processing parameters this RAW codec
     /// exposes.
     ///
@@ -94,17 +166,7 @@ impl RawProcessingSession {
         if s != 0 || arr.is_null() {
             return Err(VTError::EncodeFailed(s));
         }
-        let count = unsafe { ffi::CFArrayGetCount(arr) };
-        let mut out = Vec::with_capacity(count.max(0) as usize);
-        for i in 0..count {
-            let dict = unsafe { ffi::CFArrayGetValueAtIndex(arr, i) };
-            if !dict.is_null() {
-                unsafe { ffi::CFRetain(dict.cast()) };
-                out.push(RawProcessingParameter {
-                    dict: dict.cast_mut(),
-                });
-            }
-        }
+        let out = parameters_from_array(arr);
         unsafe { ffi::CFRelease(arr.cast()) };
         Ok(out)
     }
@@ -130,6 +192,68 @@ impl RawProcessingSession {
         }
     }
 
+    /// Install a callback that fires when the RAW processor changes its
+    /// available parameters or their current values.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] when the framework rejects the handler.
+    pub fn set_parameter_changed_handler<F>(&self, callback: F) -> Result<(), VTError>
+    where
+        F: FnMut(Vec<RawProcessingParameter>) + Send + 'static,
+    {
+        let raw = Box::into_raw(Box::new(Box::new(callback) as ParameterChangedCallback));
+        let status = unsafe {
+            vtb_raw_session_set_parameter_changed_handler(
+                self.inner.cast(),
+                raw.cast(),
+                Some(raw_parameter_changed_trampoline),
+            )
+        };
+        if status != 0 {
+            unsafe { drop(Box::from_raw(raw)) };
+            return Err(VTError::ApiFailed {
+                api: "VTRAWProcessingSessionSetParameterChangedHandler",
+                status,
+            });
+        }
+
+        let old = match self.parameter_changed_handler.lock() {
+            Ok(mut slot) => slot.replace(raw),
+            Err(poisoned) => poisoned.into_inner().replace(raw),
+        };
+        if let Some(old) = old {
+            unsafe { drop(Box::from_raw(old)) };
+        }
+        Ok(())
+    }
+
+    /// Remove any previously-installed parameter-change handler.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::ApiFailed`] when the framework rejects the update.
+    pub fn clear_parameter_changed_handler(&self) -> Result<(), VTError> {
+        let status = unsafe {
+            vtb_raw_session_set_parameter_changed_handler(self.inner.cast(), ptr::null_mut(), None)
+        };
+        if status != 0 {
+            return Err(VTError::ApiFailed {
+                api: "VTRAWProcessingSessionSetParameterChangedHandler",
+                status,
+            });
+        }
+
+        let old = match self.parameter_changed_handler.lock() {
+            Ok(mut handler) => handler.take(),
+            Err(poisoned) => poisoned.into_inner().take(),
+        };
+        if let Some(old) = old {
+            unsafe { drop(Box::from_raw(old)) };
+        }
+        Ok(())
+    }
+
     /// Process a single RAW input frame, returning the processed
     /// `CVPixelBuffer`. Blocks on Swift's `process(frame:)` async
     /// call internally.
@@ -153,6 +277,35 @@ impl RawProcessingSession {
     pub const fn as_ptr(&self) -> ffi::VTRAWProcessingSessionRef {
         self.inner
     }
+}
+
+fn parameters_from_array(arr: ffi::CFArrayRef) -> Vec<RawProcessingParameter> {
+    if arr.is_null() {
+        return Vec::new();
+    }
+
+    let count = unsafe { ffi::CFArrayGetCount(arr) };
+    let mut out = Vec::with_capacity(count.max(0) as usize);
+    for i in 0..count {
+        let dict = unsafe { ffi::CFArrayGetValueAtIndex(arr, i) };
+        if !dict.is_null() {
+            unsafe { ffi::CFRetain(dict.cast()) };
+            out.push(RawProcessingParameter {
+                dict: dict.cast_mut(),
+            });
+        }
+    }
+    out
+}
+
+unsafe extern "C" fn raw_parameter_changed_trampoline(
+    refcon: *mut c_void,
+    parameter_array: ffi::CFArrayRef,
+) {
+    let Some(callback) = (unsafe { refcon.cast::<ParameterChangedCallback>().as_mut() }) else {
+        return;
+    };
+    callback(parameters_from_array(parameter_array));
 }
 
 /// A single RAW-processing parameter descriptor.

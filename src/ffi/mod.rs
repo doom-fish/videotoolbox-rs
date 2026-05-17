@@ -84,6 +84,45 @@ pub const kVTDecodeInfo_ImageBufferModifiable: VTDecodeInfoFlags = 1 << 2;
 pub const kVTDecodeInfo_SkippedLeadingFrameDropped: VTDecodeInfoFlags = 1 << 3;
 pub const kVTDecodeInfo_FrameInterrupted: VTDecodeInfoFlags = 1 << 4;
 
+pub type VTFrameRateConversionConfigurationQualityPrioritization = isize;
+pub const VTFrameRateConversionConfigurationQualityPrioritizationNormal:
+    VTFrameRateConversionConfigurationQualityPrioritization = 1;
+pub const VTFrameRateConversionConfigurationQualityPrioritizationQuality:
+    VTFrameRateConversionConfigurationQualityPrioritization = 2;
+pub type VTFrameRateConversionConfigurationRevision = isize;
+pub const VTFrameRateConversionConfigurationRevision1: VTFrameRateConversionConfigurationRevision =
+    1;
+pub type VTMotionBlurConfigurationQualityPrioritization = isize;
+pub const VTMotionBlurConfigurationQualityPrioritizationNormal:
+    VTMotionBlurConfigurationQualityPrioritization = 1;
+pub const VTMotionBlurConfigurationQualityPrioritizationQuality:
+    VTMotionBlurConfigurationQualityPrioritization = 2;
+pub type VTMotionBlurConfigurationRevision = isize;
+pub const VTMotionBlurConfigurationRevision1: VTMotionBlurConfigurationRevision = 1;
+pub type VTOpticalFlowConfigurationQualityPrioritization = isize;
+pub const VTOpticalFlowConfigurationQualityPrioritizationNormal:
+    VTOpticalFlowConfigurationQualityPrioritization = 1;
+pub const VTOpticalFlowConfigurationQualityPrioritizationQuality:
+    VTOpticalFlowConfigurationQualityPrioritization = 2;
+pub type VTOpticalFlowConfigurationRevision = isize;
+pub const VTOpticalFlowConfigurationRevision1: VTOpticalFlowConfigurationRevision = 1;
+pub type VTSuperResolutionScalerConfigurationInputType = isize;
+pub const VTSuperResolutionScalerConfigurationInputTypeVideo:
+    VTSuperResolutionScalerConfigurationInputType = 1;
+pub const VTSuperResolutionScalerConfigurationInputTypeImage:
+    VTSuperResolutionScalerConfigurationInputType = 2;
+pub type VTSuperResolutionScalerConfigurationQualityPrioritization = isize;
+pub const VTSuperResolutionScalerConfigurationQualityPrioritizationNormal:
+    VTSuperResolutionScalerConfigurationQualityPrioritization = 1;
+pub type VTSuperResolutionScalerConfigurationRevision = isize;
+pub const VTSuperResolutionScalerConfigurationRevision1:
+    VTSuperResolutionScalerConfigurationRevision = 1;
+pub type VTMotionEstimationFrameFlags = u32;
+pub const kVTMotionEstimationFrameFlags_CurrentBufferWillBeNextReferenceBuffer:
+    VTMotionEstimationFrameFlags = 1 << 0;
+pub type VTMotionEstimationInfoFlags = u32;
+pub const kVTMotionEstimationInfoFlags_Reserved0: VTMotionEstimationInfoFlags = 1 << 0;
+
 // ---- CoreFoundation minimum required surface ----
 
 pub type CFAllocatorRef = *const c_void;
@@ -95,6 +134,8 @@ pub type CFDictionaryRef = *const c_void;
 pub type CFMutableDictionaryRef = *mut c_void;
 pub type CFArrayRef = *const c_void;
 pub type CFURLRef = *const c_void;
+pub type VTExtensionPropertiesKey = CFStringRef;
+pub type VTHDRPerFrameMetadataGenerationHDRFormatType = CFStringRef;
 
 pub type CFNumberType = c_int;
 pub const kCFNumberSInt32Type: CFNumberType = 3;
@@ -323,6 +364,18 @@ extern "C" {
         session: VTSessionRef,
         supported_property_dictionary_out: *mut CFDictionaryRef,
     ) -> OSStatus;
+    pub static kVTPropertyTypeKey: CFStringRef;
+    pub static kVTPropertyType_Enumeration: CFStringRef;
+    pub static kVTPropertyType_Boolean: CFStringRef;
+    pub static kVTPropertyType_Number: CFStringRef;
+    pub static kVTPropertyReadWriteStatusKey: CFStringRef;
+    pub static kVTPropertyReadWriteStatus_ReadOnly: CFStringRef;
+    pub static kVTPropertyReadWriteStatus_ReadWrite: CFStringRef;
+    pub static kVTPropertyShouldBeSerializedKey: CFStringRef;
+    pub static kVTPropertySupportedValueMinimumKey: CFStringRef;
+    pub static kVTPropertySupportedValueMaximumKey: CFStringRef;
+    pub static kVTPropertySupportedValueListKey: CFStringRef;
+    pub static kVTPropertyDocumentationKey: CFStringRef;
 
     // Common compression property keys (declared as CFStringRef constants by the framework).
     pub static kVTCompressionPropertyKey_RealTime: CFStringRef;
@@ -746,6 +799,11 @@ extern "C" {
         refcon: *mut c_void,
         callback: Option<unsafe extern "C" fn(*mut c_void, CMSampleBufferRef) -> OSStatus>,
     ) -> OSStatus;
+    pub fn VTFrameSiloCallBlockForEachSampleBuffer(
+        silo: VTFrameSiloRef,
+        time_range: CMTimeRange,
+        handler: *const c_void,
+    ) -> OSStatus;
 
     // ---- VTMultiPassStorage (v0.9) ----
     pub fn VTMultiPassStorageGetTypeID() -> usize;
@@ -760,6 +818,7 @@ extern "C" {
     pub fn VTMultiPassStorageClose(storage: VTMultiPassStorageRef) -> OSStatus;
 
     // ---- VTHDRPerFrameMetadataGenerationSession (v0.9) ----
+    pub fn VTHDRPerFrameMetadataGenerationSessionGetTypeID() -> usize;
     pub fn VTHDRPerFrameMetadataGenerationSessionCreate(
         allocator: CFAllocatorRef,
         frames_per_second: f32,
@@ -771,6 +830,9 @@ extern "C" {
         pixel_buffer: CVPixelBufferRef,
         scene_change: bool,
     ) -> OSStatus;
+    pub static kVTHDRPerFrameMetadataGenerationHDRFormatType_DolbyVision:
+        VTHDRPerFrameMetadataGenerationHDRFormatType;
+    pub static kVTHDRPerFrameMetadataGenerationOptionsKey_HDRFormats: CFStringRef;
 
     // ---- VTUtilities + VTProfessionalVideoWorkflow (v0.9) ----
     pub fn VTCreateCGImageFromCVPixelBuffer(
@@ -778,6 +840,21 @@ extern "C" {
         options: CFDictionaryRef,
         image_out: *mut *mut c_void,
     ) -> OSStatus;
+    pub fn VTRegisterSupplementalVideoDecoderIfAvailable(codec_type: CMVideoCodecType);
+    pub fn VTCopyVideoDecoderExtensionProperties(
+        format_description: CMFormatDescriptionRef,
+        media_extension_properties_out: *mut CFDictionaryRef,
+    ) -> OSStatus;
+    pub fn VTCopyRAWProcessorExtensionProperties(
+        format_description: CMFormatDescriptionRef,
+        media_extension_properties_out: *mut CFDictionaryRef,
+    ) -> OSStatus;
+    pub static kVTExtensionProperties_CodecNameKey: VTExtensionPropertiesKey;
+    pub static kVTExtensionProperties_ContainingBundleNameKey: VTExtensionPropertiesKey;
+    pub static kVTExtensionProperties_ContainingBundleURLKey: VTExtensionPropertiesKey;
+    pub static kVTExtensionProperties_ExtensionIdentifierKey: VTExtensionPropertiesKey;
+    pub static kVTExtensionProperties_ExtensionNameKey: VTExtensionPropertiesKey;
+    pub static kVTExtensionProperties_ExtensionURLKey: VTExtensionPropertiesKey;
     pub fn VTRegisterProfessionalVideoWorkflowVideoDecoders();
     pub fn VTRegisterProfessionalVideoWorkflowVideoEncoders();
 
@@ -798,6 +875,9 @@ extern "C" {
     pub fn VTMotionEstimationSessionCompleteFrames(
         session: VTMotionEstimationSessionRef,
     ) -> OSStatus;
+    pub static kVTMotionEstimationSessionCreationOption_Label: CFStringRef;
+    pub static kVTMotionEstimationSessionCreationOption_MotionVectorSize: CFStringRef;
+    pub static kVTMotionEstimationSessionCreationOption_UseMultiPassSearch: CFStringRef;
 
     // ---- VTRAWProcessingSession (v0.10, macOS 15+) ----
     pub fn VTRAWProcessingSessionGetTypeID() -> usize;
@@ -818,6 +898,13 @@ extern "C" {
         session: VTRAWProcessingSessionRef,
         processing_parameters: CFDictionaryRef,
     ) -> OSStatus;
+    pub fn VTRAWProcessingSessionSetParameterChangedHandler(
+        session: VTRAWProcessingSessionRef,
+        parameter_change_handler: *const c_void,
+    ) -> OSStatus;
+    pub static kVTRAWProcessingPropertyKey_MetadataForSidecarFile: CFStringRef;
+    pub static kVTRAWProcessingPropertyKey_MetalDeviceRegistryID: CFStringRef;
+    pub static kVTRAWProcessingPropertyKey_OutputColorAttachments: CFStringRef;
 
     // ---- VTRAW parameter keys (v0.10) ----
     pub static kVTRAWProcessingParameter_Key: CFStringRef;

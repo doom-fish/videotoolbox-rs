@@ -4,10 +4,27 @@
 use core::ffi::c_void;
 use core::ptr;
 
-use apple_cf::cv::CVPixelBuffer;
+use apple_cf::{
+    cf::{AsCFType, CFArray, CFDictionary, CFType},
+    cv::CVPixelBuffer,
+};
 
 use crate::error::VTError;
 use crate::ffi;
+
+/// HDR metadata formats accepted by `VTHDRPerFrameMetadataGenerationSession`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HdrMetadataFormat {
+    DolbyVision,
+}
+
+impl HdrMetadataFormat {
+    fn as_cf_string(self) -> ffi::VTHDRPerFrameMetadataGenerationHDRFormatType {
+        match self {
+            Self::DolbyVision => unsafe { ffi::kVTHDRPerFrameMetadataGenerationHDRFormatType_DolbyVision },
+        }
+    }
+}
 
 /// `VTHDRPerFrameMetadataGenerationSessionRef`.
 pub struct HdrMetadataSession {
@@ -27,19 +44,41 @@ impl Drop for HdrMetadataSession {
 }
 
 impl HdrMetadataSession {
-    /// Create a new HDR-metadata generation session. `fps` is the
-    /// source frame rate (used for temporal-coherence calculations).
+    /// CoreFoundation type identifier for `VTHDRPerFrameMetadataGenerationSession`.
+    #[must_use]
+    pub fn type_id() -> usize {
+        unsafe { ffi::VTHDRPerFrameMetadataGenerationSessionGetTypeID() }
+    }
+
+    /// Create a new HDR-metadata generation session configured for Dolby Vision.
+    /// `fps` is the source frame rate (used for temporal-coherence calculations).
     ///
     /// # Errors
     ///
     /// Returns [`VTError::SessionCreateFailed`] on failure.
     pub fn new(fps: f32) -> Result<Self, VTError> {
+        Self::new_with_formats(fps, &[HdrMetadataFormat::DolbyVision])
+    }
+
+    /// Create a new HDR-metadata generation session with explicit HDR formats.
+    ///
+    /// Apple's current public macOS SDK only advertises
+    /// [`HdrMetadataFormat::DolbyVision`]. Passing an empty slice falls back to
+    /// the framework default.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::SessionCreateFailed`] on failure.
+    pub fn new_with_formats(fps: f32, hdr_formats: &[HdrMetadataFormat]) -> Result<Self, VTError> {
+        let options = build_hdr_options(hdr_formats);
         let mut p: ffi::VTHDRPerFrameMetadataGenerationSessionRef = ptr::null_mut();
         let s = unsafe {
             ffi::VTHDRPerFrameMetadataGenerationSessionCreate(
                 ffi::kCFAllocatorDefault,
                 fps,
-                ptr::null(),
+                options
+                    .as_ref()
+                    .map_or(ptr::null(), |dict| dict.as_ptr().cast_const()),
                 &mut p,
             )
         };
@@ -81,4 +120,23 @@ impl HdrMetadataSession {
     pub const fn as_ptr(&self) -> ffi::VTHDRPerFrameMetadataGenerationSessionRef {
         self.inner
     }
+}
+
+fn build_hdr_options(hdr_formats: &[HdrMetadataFormat]) -> Option<CFDictionary> {
+    if hdr_formats.is_empty() {
+        return None;
+    }
+
+    let formats: Vec<CFType> = hdr_formats
+        .iter()
+        .map(|format| retained_cf_type(format.as_cf_string().cast_mut()))
+        .collect();
+    let format_refs: Vec<&dyn AsCFType> = formats.iter().map(|format| format as &dyn AsCFType).collect();
+    let array = CFArray::from_values(&format_refs);
+    let key = retained_cf_type(unsafe { ffi::kVTHDRPerFrameMetadataGenerationOptionsKey_HDRFormats.cast_mut() });
+    Some(CFDictionary::from_pairs(&[(&key as &dyn AsCFType, &array as &dyn AsCFType)]))
+}
+
+fn retained_cf_type(raw: *mut c_void) -> CFType {
+    unsafe { CFType::from_raw_retained(raw).expect("VideoToolbox HDR constant must be non-null") }
 }

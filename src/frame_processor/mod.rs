@@ -39,21 +39,27 @@ extern "C" {
         frame_height: isize,
         scale_factor: isize,
         use_precomputed_flow: bool,
-        input_is_image: bool,
+        input_type: isize,
+        quality_prioritization: isize,
+        revision: isize,
     ) -> i32;
     fn vt_super_resolution_model_percentage_available(
         frame_width: isize,
         frame_height: isize,
         scale_factor: isize,
         use_precomputed_flow: bool,
-        input_is_image: bool,
+        input_type: isize,
+        quality_prioritization: isize,
+        revision: isize,
     ) -> f32;
     fn vt_super_resolution_download_model(
         frame_width: isize,
         frame_height: isize,
         scale_factor: isize,
         use_precomputed_flow: bool,
-        input_is_image: bool,
+        input_type: isize,
+        quality_prioritization: isize,
+        revision: isize,
     ) -> i32;
 
     fn vt_super_resolution_start(
@@ -61,13 +67,17 @@ extern "C" {
         frame_height: isize,
         scale_factor: isize,
         use_precomputed_flow: bool,
-        input_is_image: bool,
+        input_type: isize,
+        quality_prioritization: isize,
+        revision: isize,
         out: *mut *mut c_void,
     ) -> i32;
     fn vt_motion_blur_start(
         frame_width: isize,
         frame_height: isize,
         use_precomputed_flow: bool,
+        quality_prioritization: isize,
+        revision: isize,
         out: *mut *mut c_void,
     ) -> i32;
     fn vt_temporal_noise_filter_start(
@@ -80,6 +90,8 @@ extern "C" {
         frame_width: isize,
         frame_height: isize,
         use_precomputed_flow: bool,
+        quality_prioritization: isize,
+        revision: isize,
         out: *mut *mut c_void,
     ) -> i32;
     fn vt_low_latency_super_resolution_start(
@@ -94,8 +106,13 @@ extern "C" {
         number_of_interpolated_frames: isize,
         out: *mut *mut c_void,
     ) -> i32;
-    fn vt_optical_flow_start(frame_width: isize, frame_height: isize, out: *mut *mut c_void)
-        -> i32;
+    fn vt_optical_flow_start(
+        frame_width: isize,
+        frame_height: isize,
+        quality_prioritization: isize,
+        revision: isize,
+        out: *mut *mut c_void,
+    ) -> i32;
 
     fn vt_frame_processor_frame_create(
         buffer: *mut c_void,
@@ -280,6 +297,167 @@ pub enum FrameRateConversionSubmissionMode {
     SequentialReferencesUnchanged = 3,
 }
 
+/// `VTFrameRateConversionConfiguration.QualityPrioritization`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(isize)]
+pub enum VTFrameRateConversionConfigurationQualityPrioritization {
+    Normal = ffi::VTFrameRateConversionConfigurationQualityPrioritizationNormal,
+    Quality = ffi::VTFrameRateConversionConfigurationQualityPrioritizationQuality,
+}
+
+/// `VTFrameRateConversionConfiguration.Revision`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(isize)]
+pub enum VTFrameRateConversionConfigurationRevision {
+    Revision1 = ffi::VTFrameRateConversionConfigurationRevision1,
+}
+
+/// `VTMotionBlurConfiguration.QualityPrioritization`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(isize)]
+pub enum VTMotionBlurConfigurationQualityPrioritization {
+    Normal = ffi::VTMotionBlurConfigurationQualityPrioritizationNormal,
+    Quality = ffi::VTMotionBlurConfigurationQualityPrioritizationQuality,
+}
+
+/// `VTMotionBlurConfiguration.Revision`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(isize)]
+pub enum VTMotionBlurConfigurationRevision {
+    Revision1 = ffi::VTMotionBlurConfigurationRevision1,
+}
+
+/// `VTOpticalFlowConfiguration.QualityPrioritization`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(isize)]
+pub enum VTOpticalFlowConfigurationQualityPrioritization {
+    Normal = ffi::VTOpticalFlowConfigurationQualityPrioritizationNormal,
+    Quality = ffi::VTOpticalFlowConfigurationQualityPrioritizationQuality,
+}
+
+/// `VTOpticalFlowConfiguration.Revision`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(isize)]
+pub enum VTOpticalFlowConfigurationRevision {
+    Revision1 = ffi::VTOpticalFlowConfigurationRevision1,
+}
+
+/// `VTSuperResolutionScalerConfiguration.InputType`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(isize)]
+pub enum VTSuperResolutionScalerConfigurationInputType {
+    Video = ffi::VTSuperResolutionScalerConfigurationInputTypeVideo,
+    Image = ffi::VTSuperResolutionScalerConfigurationInputTypeImage,
+}
+
+/// `VTSuperResolutionScalerConfiguration.QualityPrioritization`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(isize)]
+pub enum VTSuperResolutionScalerConfigurationQualityPrioritization {
+    Normal = ffi::VTSuperResolutionScalerConfigurationQualityPrioritizationNormal,
+}
+
+/// `VTSuperResolutionScalerConfiguration.Revision`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(isize)]
+pub enum VTSuperResolutionScalerConfigurationRevision {
+    Revision1 = ffi::VTSuperResolutionScalerConfigurationRevision1,
+}
+
+/// Explicit configuration for `VTSuperResolutionScalerConfiguration`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SuperResolutionConfiguration {
+    pub frame_width: usize,
+    pub frame_height: usize,
+    pub scale_factor: usize,
+    pub use_precomputed_flow: bool,
+    pub input_type: VTSuperResolutionScalerConfigurationInputType,
+    pub quality_prioritization: VTSuperResolutionScalerConfigurationQualityPrioritization,
+    pub revision: VTSuperResolutionScalerConfigurationRevision,
+}
+
+impl SuperResolutionConfiguration {
+    #[must_use]
+    pub const fn new(frame_width: usize, frame_height: usize, scale_factor: usize) -> Self {
+        Self {
+            frame_width,
+            frame_height,
+            scale_factor,
+            use_precomputed_flow: false,
+            input_type: VTSuperResolutionScalerConfigurationInputType::Video,
+            quality_prioritization: VTSuperResolutionScalerConfigurationQualityPrioritization::Normal,
+            revision: VTSuperResolutionScalerConfigurationRevision::Revision1,
+        }
+    }
+}
+
+/// Explicit configuration for `VTMotionBlurConfiguration`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MotionBlurConfiguration {
+    pub frame_width: usize,
+    pub frame_height: usize,
+    pub use_precomputed_flow: bool,
+    pub quality_prioritization: VTMotionBlurConfigurationQualityPrioritization,
+    pub revision: VTMotionBlurConfigurationRevision,
+}
+
+impl MotionBlurConfiguration {
+    #[must_use]
+    pub const fn new(frame_width: usize, frame_height: usize) -> Self {
+        Self {
+            frame_width,
+            frame_height,
+            use_precomputed_flow: false,
+            quality_prioritization: VTMotionBlurConfigurationQualityPrioritization::Normal,
+            revision: VTMotionBlurConfigurationRevision::Revision1,
+        }
+    }
+}
+
+/// Explicit configuration for `VTFrameRateConversionConfiguration`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FrameRateConversionConfiguration {
+    pub frame_width: usize,
+    pub frame_height: usize,
+    pub use_precomputed_flow: bool,
+    pub quality_prioritization: VTFrameRateConversionConfigurationQualityPrioritization,
+    pub revision: VTFrameRateConversionConfigurationRevision,
+}
+
+impl FrameRateConversionConfiguration {
+    #[must_use]
+    pub const fn new(frame_width: usize, frame_height: usize) -> Self {
+        Self {
+            frame_width,
+            frame_height,
+            use_precomputed_flow: false,
+            quality_prioritization: VTFrameRateConversionConfigurationQualityPrioritization::Normal,
+            revision: VTFrameRateConversionConfigurationRevision::Revision1,
+        }
+    }
+}
+
+/// Explicit configuration for `VTOpticalFlowConfiguration`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OpticalFlowConfiguration {
+    pub frame_width: usize,
+    pub frame_height: usize,
+    pub quality_prioritization: VTOpticalFlowConfigurationQualityPrioritization,
+    pub revision: VTOpticalFlowConfigurationRevision,
+}
+
+impl OpticalFlowConfiguration {
+    #[must_use]
+    pub const fn new(frame_width: usize, frame_height: usize) -> Self {
+        Self {
+            frame_width,
+            frame_height,
+            quality_prioritization: VTOpticalFlowConfigurationQualityPrioritization::Normal,
+            revision: VTOpticalFlowConfigurationRevision::Revision1,
+        }
+    }
+}
+
 /// Super-resolution model availability.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(i32)]
@@ -356,13 +534,29 @@ pub fn super_resolution_model_status(
     use_precomputed_flow: bool,
     input_is_image: bool,
 ) -> Option<SuperResolutionModelStatus> {
+    super_resolution_model_status_for_configuration(default_super_resolution_configuration(
+        frame_width,
+        frame_height,
+        scale_factor,
+        use_precomputed_flow,
+        input_is_image,
+    ))
+}
+
+/// Query the model-download state for an explicit super-resolution configuration.
+#[must_use]
+pub fn super_resolution_model_status_for_configuration(
+    configuration: SuperResolutionConfiguration,
+) -> Option<SuperResolutionModelStatus> {
     SuperResolutionModelStatus::from_raw(unsafe {
         vt_super_resolution_model_status(
-            frame_width as isize,
-            frame_height as isize,
-            scale_factor as isize,
-            use_precomputed_flow,
-            input_is_image,
+            configuration.frame_width as isize,
+            configuration.frame_height as isize,
+            configuration.scale_factor as isize,
+            configuration.use_precomputed_flow,
+            configuration.input_type as isize,
+            configuration.quality_prioritization as isize,
+            configuration.revision as isize,
         )
     })
 }
@@ -376,13 +570,31 @@ pub fn super_resolution_model_percentage_available(
     use_precomputed_flow: bool,
     input_is_image: bool,
 ) -> Option<f32> {
-    let value = unsafe {
-        vt_super_resolution_model_percentage_available(
-            frame_width as isize,
-            frame_height as isize,
-            scale_factor as isize,
+    super_resolution_model_percentage_available_for_configuration(
+        default_super_resolution_configuration(
+            frame_width,
+            frame_height,
+            scale_factor,
             use_precomputed_flow,
             input_is_image,
+        ),
+    )
+}
+
+/// Query the model-download percentage for an explicit super-resolution configuration.
+#[must_use]
+pub fn super_resolution_model_percentage_available_for_configuration(
+    configuration: SuperResolutionConfiguration,
+) -> Option<f32> {
+    let value = unsafe {
+        vt_super_resolution_model_percentage_available(
+            configuration.frame_width as isize,
+            configuration.frame_height as isize,
+            configuration.scale_factor as isize,
+            configuration.use_precomputed_flow,
+            configuration.input_type as isize,
+            configuration.quality_prioritization as isize,
+            configuration.revision as isize,
         )
     };
     (value >= 0.0).then_some(value)
@@ -401,13 +613,32 @@ pub fn download_super_resolution_model(
     use_precomputed_flow: bool,
     input_is_image: bool,
 ) -> Result<(), VTError> {
+    download_super_resolution_model_for_configuration(default_super_resolution_configuration(
+        frame_width,
+        frame_height,
+        scale_factor,
+        use_precomputed_flow,
+        input_is_image,
+    ))
+}
+
+/// Trigger background model download for an explicit super-resolution configuration.
+///
+/// # Errors
+///
+/// Returns [`VTError::ApiFailed`] when `VideoToolbox` reports an error.
+pub fn download_super_resolution_model_for_configuration(
+    configuration: SuperResolutionConfiguration,
+) -> Result<(), VTError> {
     let status = unsafe {
         vt_super_resolution_download_model(
-            frame_width as isize,
-            frame_height as isize,
-            scale_factor as isize,
-            use_precomputed_flow,
-            input_is_image,
+            configuration.frame_width as isize,
+            configuration.frame_height as isize,
+            configuration.scale_factor as isize,
+            configuration.use_precomputed_flow,
+            configuration.input_type as isize,
+            configuration.quality_prioritization as isize,
+            configuration.revision as isize,
         )
     };
     api_result("downloadConfigurationModelWithCompletionHandler", status)
@@ -594,14 +825,29 @@ impl FrameProcessor {
         use_precomputed_flow: bool,
         input_is_image: bool,
     ) -> Result<Self, VTError> {
+        Self::start_super_resolution_with_configuration(default_super_resolution_configuration(
+            frame_width,
+            frame_height,
+            scale_factor,
+            use_precomputed_flow,
+            input_is_image,
+        ))
+    }
+
+    /// Start a session configured with the full `VTSuperResolutionScalerConfiguration` surface.
+    pub fn start_super_resolution_with_configuration(
+        configuration: SuperResolutionConfiguration,
+    ) -> Result<Self, VTError> {
         let mut out = core::ptr::null_mut();
         let status = unsafe {
             vt_super_resolution_start(
-                frame_width as isize,
-                frame_height as isize,
-                scale_factor as isize,
-                use_precomputed_flow,
-                input_is_image,
+                configuration.frame_width as isize,
+                configuration.frame_height as isize,
+                configuration.scale_factor as isize,
+                configuration.use_precomputed_flow,
+                configuration.input_type as isize,
+                configuration.quality_prioritization as isize,
+                configuration.revision as isize,
                 &mut out,
             )
         };
@@ -614,12 +860,23 @@ impl FrameProcessor {
         frame_height: usize,
         use_precomputed_flow: bool,
     ) -> Result<Self, VTError> {
+        let mut configuration = MotionBlurConfiguration::new(frame_width, frame_height);
+        configuration.use_precomputed_flow = use_precomputed_flow;
+        Self::start_motion_blur_with_configuration(configuration)
+    }
+
+    /// Start a motion-blur session with the full `VTMotionBlurConfiguration` surface.
+    pub fn start_motion_blur_with_configuration(
+        configuration: MotionBlurConfiguration,
+    ) -> Result<Self, VTError> {
         let mut out = core::ptr::null_mut();
         let status = unsafe {
             vt_motion_blur_start(
-                frame_width as isize,
-                frame_height as isize,
-                use_precomputed_flow,
+                configuration.frame_width as isize,
+                configuration.frame_height as isize,
+                configuration.use_precomputed_flow,
+                configuration.quality_prioritization as isize,
+                configuration.revision as isize,
                 &mut out,
             )
         };
@@ -650,12 +907,23 @@ impl FrameProcessor {
         frame_height: usize,
         use_precomputed_flow: bool,
     ) -> Result<Self, VTError> {
+        let mut configuration = FrameRateConversionConfiguration::new(frame_width, frame_height);
+        configuration.use_precomputed_flow = use_precomputed_flow;
+        Self::start_frame_rate_conversion_with_configuration(configuration)
+    }
+
+    /// Start a frame-rate-conversion session with the full `VTFrameRateConversionConfiguration` surface.
+    pub fn start_frame_rate_conversion_with_configuration(
+        configuration: FrameRateConversionConfiguration,
+    ) -> Result<Self, VTError> {
         let mut out = core::ptr::null_mut();
         let status = unsafe {
             vt_frame_rate_conversion_start(
-                frame_width as isize,
-                frame_height as isize,
-                use_precomputed_flow,
+                configuration.frame_width as isize,
+                configuration.frame_height as isize,
+                configuration.use_precomputed_flow,
+                configuration.quality_prioritization as isize,
+                configuration.revision as isize,
                 &mut out,
             )
         };
@@ -700,9 +968,26 @@ impl FrameProcessor {
 
     /// Start an optical-flow session.
     pub fn start_optical_flow(frame_width: usize, frame_height: usize) -> Result<Self, VTError> {
+        Self::start_optical_flow_with_configuration(OpticalFlowConfiguration::new(
+            frame_width,
+            frame_height,
+        ))
+    }
+
+    /// Start an optical-flow session with the full `VTOpticalFlowConfiguration` surface.
+    pub fn start_optical_flow_with_configuration(
+        configuration: OpticalFlowConfiguration,
+    ) -> Result<Self, VTError> {
         let mut out = core::ptr::null_mut();
-        let status =
-            unsafe { vt_optical_flow_start(frame_width as isize, frame_height as isize, &mut out) };
+        let status = unsafe {
+            vt_optical_flow_start(
+                configuration.frame_width as isize,
+                configuration.frame_height as isize,
+                configuration.quality_prioritization as isize,
+                configuration.revision as isize,
+                &mut out,
+            )
+        };
         Self::from_status(status, out)
     }
 
@@ -1076,6 +1361,23 @@ impl FrameProcessor {
     pub const fn as_ptr(&self) -> *mut c_void {
         self.inner
     }
+}
+
+fn default_super_resolution_configuration(
+    frame_width: usize,
+    frame_height: usize,
+    scale_factor: usize,
+    use_precomputed_flow: bool,
+    input_is_image: bool,
+) -> SuperResolutionConfiguration {
+    let mut configuration = SuperResolutionConfiguration::new(frame_width, frame_height, scale_factor);
+    configuration.use_precomputed_flow = use_precomputed_flow;
+    configuration.input_type = if input_is_image {
+        VTSuperResolutionScalerConfigurationInputType::Image
+    } else {
+        VTSuperResolutionScalerConfigurationInputType::Video
+    };
+    configuration
 }
 
 fn to_ffi_time(time: CMTime) -> ffi::CMTime {

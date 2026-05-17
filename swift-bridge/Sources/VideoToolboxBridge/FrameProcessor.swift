@@ -101,16 +101,23 @@ private func vtb_super_resolution_configuration(
     frameHeight: Int,
     scaleFactor: Int,
     usePrecomputedFlow: Bool,
-    inputIsImage: Bool
+    inputTypeRaw: Int,
+    qualityPrioritizationRaw: Int,
+    revisionRaw: Int
 ) -> VTSuperResolutionScalerConfiguration? {
-    VTSuperResolutionScalerConfiguration(
+    guard let inputType = VTSuperResolutionScalerConfiguration.InputType(rawValue: inputTypeRaw),
+          let qualityPrioritization = VTSuperResolutionScalerConfiguration.QualityPrioritization(rawValue: qualityPrioritizationRaw),
+          let revision = VTSuperResolutionScalerConfiguration.Revision(rawValue: revisionRaw) else {
+        return nil
+    }
+    return VTSuperResolutionScalerConfiguration(
         frameWidth: frameWidth,
         frameHeight: frameHeight,
         scaleFactor: scaleFactor,
-        inputType: inputIsImage ? .image : .video,
+        inputType: inputType,
         usePrecomputedFlow: usePrecomputedFlow,
-        qualityPrioritization: .normal,
-        revision: .revision1
+        qualityPrioritization: qualityPrioritization,
+        revision: revision
     )
 }
 
@@ -201,7 +208,9 @@ public func vt_super_resolution_model_status(
     _ frameHeight: Int,
     _ scaleFactor: Int,
     _ usePrecomputedFlow: Bool,
-    _ inputIsImage: Bool
+    _ inputType: Int,
+    _ qualityPrioritization: Int,
+    _ revision: Int
 ) -> Int32 {
     if #available(macOS 26.0, *) {
         guard let cfg = vtb_super_resolution_configuration(
@@ -209,7 +218,9 @@ public func vt_super_resolution_model_status(
             frameHeight: frameHeight,
             scaleFactor: scaleFactor,
             usePrecomputedFlow: usePrecomputedFlow,
-            inputIsImage: inputIsImage
+            inputTypeRaw: inputType,
+            qualityPrioritizationRaw: qualityPrioritization,
+            revisionRaw: revision
         ) else { return VTB_PARAM_ERR }
         return Int32(cfg.configurationModelStatus.rawValue)
     }
@@ -222,7 +233,9 @@ public func vt_super_resolution_model_percentage_available(
     _ frameHeight: Int,
     _ scaleFactor: Int,
     _ usePrecomputedFlow: Bool,
-    _ inputIsImage: Bool
+    _ inputType: Int,
+    _ qualityPrioritization: Int,
+    _ revision: Int
 ) -> Float {
     if #available(macOS 26.0, *) {
         guard let cfg = vtb_super_resolution_configuration(
@@ -230,7 +243,9 @@ public func vt_super_resolution_model_percentage_available(
             frameHeight: frameHeight,
             scaleFactor: scaleFactor,
             usePrecomputedFlow: usePrecomputedFlow,
-            inputIsImage: inputIsImage
+            inputTypeRaw: inputType,
+            qualityPrioritizationRaw: qualityPrioritization,
+            revisionRaw: revision
         ) else { return -1.0 }
         return cfg.configurationModelPercentageAvailable
     }
@@ -243,7 +258,9 @@ public func vt_super_resolution_download_model(
     _ frameHeight: Int,
     _ scaleFactor: Int,
     _ usePrecomputedFlow: Bool,
-    _ inputIsImage: Bool
+    _ inputType: Int,
+    _ qualityPrioritization: Int,
+    _ revision: Int
 ) -> Int32 {
     if #available(macOS 26.0, *) {
         guard let cfg = vtb_super_resolution_configuration(
@@ -251,7 +268,9 @@ public func vt_super_resolution_download_model(
             frameHeight: frameHeight,
             scaleFactor: scaleFactor,
             usePrecomputedFlow: usePrecomputedFlow,
-            inputIsImage: inputIsImage
+            inputTypeRaw: inputType,
+            qualityPrioritizationRaw: qualityPrioritization,
+            revisionRaw: revision
         ) else { return VTB_PARAM_ERR }
         let sem = DispatchSemaphore(value: 0)
         var status: Int32 = 0
@@ -275,7 +294,9 @@ public func vt_super_resolution_start(
     _ frameHeight: Int,
     _ scaleFactor: Int,
     _ usePrecomputedFlow: Bool,
-    _ inputIsImage: Bool,
+    _ inputType: Int,
+    _ qualityPrioritization: Int,
+    _ revision: Int,
     _ out: UnsafeMutablePointer<UnsafeMutableRawPointer?>
 ) -> Int32 {
     out.pointee = nil
@@ -285,8 +306,10 @@ public func vt_super_resolution_start(
             frameHeight: frameHeight,
             scaleFactor: scaleFactor,
             usePrecomputedFlow: usePrecomputedFlow,
-            inputIsImage: inputIsImage
-        ) else { return VTB_NOT_SUPPORTED }
+            inputTypeRaw: inputType,
+            qualityPrioritizationRaw: qualityPrioritization,
+            revisionRaw: revision
+        ) else { return VTB_PARAM_ERR }
         let p = VTFrameProcessor()
         do {
             try p.startSession(configuration: cfg)
@@ -304,17 +327,21 @@ public func vt_motion_blur_start(
     _ frameWidth: Int,
     _ frameHeight: Int,
     _ usePrecomputedFlow: Bool,
+    _ qualityPrioritization: Int,
+    _ revision: Int,
     _ out: UnsafeMutablePointer<UnsafeMutableRawPointer?>
 ) -> Int32 {
     out.pointee = nil
     if #available(macOS 15.4, *) {
-        guard let cfg = VTMotionBlurConfiguration(
-            frameWidth: frameWidth,
-            frameHeight: frameHeight,
-            usePrecomputedFlow: usePrecomputedFlow,
-            qualityPrioritization: .normal,
-            revision: .revision1
-        ) else { return VTB_NOT_SUPPORTED }
+        guard let qualityPrioritization = VTMotionBlurConfiguration.QualityPrioritization(rawValue: qualityPrioritization),
+              let revision = VTMotionBlurConfiguration.Revision(rawValue: revision),
+              let cfg = VTMotionBlurConfiguration(
+                frameWidth: frameWidth,
+                frameHeight: frameHeight,
+                usePrecomputedFlow: usePrecomputedFlow,
+                qualityPrioritization: qualityPrioritization,
+                revision: revision
+              ) else { return VTB_PARAM_ERR }
         let p = VTFrameProcessor()
         do {
             try p.startSession(configuration: cfg)
@@ -358,17 +385,21 @@ public func vt_frame_rate_conversion_start(
     _ frameWidth: Int,
     _ frameHeight: Int,
     _ usePrecomputedFlow: Bool,
+    _ qualityPrioritization: Int,
+    _ revision: Int,
     _ out: UnsafeMutablePointer<UnsafeMutableRawPointer?>
 ) -> Int32 {
     out.pointee = nil
     if #available(macOS 15.4, *) {
-        guard let cfg = VTFrameRateConversionConfiguration(
-            frameWidth: frameWidth,
-            frameHeight: frameHeight,
-            usePrecomputedFlow: usePrecomputedFlow,
-            qualityPrioritization: .normal,
-            revision: .revision1
-        ) else { return VTB_NOT_SUPPORTED }
+        guard let qualityPrioritization = VTFrameRateConversionConfiguration.QualityPrioritization(rawValue: qualityPrioritization),
+              let revision = VTFrameRateConversionConfiguration.Revision(rawValue: revision),
+              let cfg = VTFrameRateConversionConfiguration(
+                frameWidth: frameWidth,
+                frameHeight: frameHeight,
+                usePrecomputedFlow: usePrecomputedFlow,
+                qualityPrioritization: qualityPrioritization,
+                revision: revision
+              ) else { return VTB_PARAM_ERR }
         let p = VTFrameProcessor()
         do {
             try p.startSession(configuration: cfg)
@@ -437,16 +468,20 @@ public func vt_low_latency_frame_interpolation_start(
 public func vt_optical_flow_start(
     _ frameWidth: Int,
     _ frameHeight: Int,
+    _ qualityPrioritization: Int,
+    _ revision: Int,
     _ out: UnsafeMutablePointer<UnsafeMutableRawPointer?>
 ) -> Int32 {
     out.pointee = nil
     if #available(macOS 15.4, *) {
-        guard let cfg = VTOpticalFlowConfiguration(
-            frameWidth: frameWidth,
-            frameHeight: frameHeight,
-            qualityPrioritization: .normal,
-            revision: .revision1
-        ) else { return VTB_NOT_SUPPORTED }
+        guard let qualityPrioritization = VTOpticalFlowConfiguration.QualityPrioritization(rawValue: qualityPrioritization),
+              let revision = VTOpticalFlowConfiguration.Revision(rawValue: revision),
+              let cfg = VTOpticalFlowConfiguration(
+                frameWidth: frameWidth,
+                frameHeight: frameHeight,
+                qualityPrioritization: qualityPrioritization,
+                revision: revision
+              ) else { return VTB_PARAM_ERR }
         let p = VTFrameProcessor()
         do {
             try p.startSession(configuration: cfg)

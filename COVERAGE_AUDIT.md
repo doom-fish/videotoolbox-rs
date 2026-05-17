@@ -1,10 +1,10 @@
 # videotoolbox-rs coverage audit (vs MacOSX26.2.sdk)
 
 SDK_PUBLIC_SYMBOLS: 449
-VERIFIED: 405
-GAPS: 43
+VERIFIED: 448
+GAPS: 0
 EXEMPT: 1
-COVERAGE_PCT: 90.40%
+COVERAGE_PCT: 100.00%
 
 Audit scope: top-level public VideoToolbox symbols from the macOS SDK headers only (interfaces/protocols, typedef enum/struct/opaque refs, exported constants, and exported functions). Exact-name matches in the public `ffi` module count as verified; ObjC-only frame-processor, motion-estimation, and RAW-processing entry points are credited when the public safe wrapper reaches them through the Swift bridge.
 
@@ -417,52 +417,52 @@ Audit scope: top-level public VideoToolbox symbols from the macOS SDK headers on
 | `kVTViewPackingKind_OverUnder` | constant | `VTCompressionProperties.h` | `ffi::kVTViewPackingKind_OverUnder` |
 | `kVTViewPackingKind_SideBySide` | constant | `VTCompressionProperties.h` | `ffi::kVTViewPackingKind_SideBySide` |
 
-## 🔴 GAPS
-| Symbol | Kind | Header | Why missing |
+## 🟢 VERIFIED (v0.11.2 additions)
+| Symbol | Kind | Header | Wrapped by |
 | --- | --- | --- | --- |
-| `VTFrameRateConversionConfigurationQualityPrioritization` | enum | `VTFrameProcessor_FrameRateConversion.h` | Frame-processor wrappers do not expose this configuration enum. |
-| `VTFrameRateConversionConfigurationRevision` | enum | `VTFrameProcessor_FrameRateConversion.h` | Frame-processor wrappers do not expose this configuration enum. |
-| `VTMotionBlurConfigurationQualityPrioritization` | enum | `VTFrameProcessor_MotionBlur.h` | Frame-processor wrappers do not expose this configuration enum. |
-| `VTMotionBlurConfigurationRevision` | enum | `VTFrameProcessor_MotionBlur.h` | Frame-processor wrappers do not expose this configuration enum. |
-| `VTOpticalFlowConfigurationQualityPrioritization` | enum | `VTFrameProcessor_OpticalFlow.h` | Frame-processor wrappers do not expose this configuration enum. |
-| `VTOpticalFlowConfigurationRevision` | enum | `VTFrameProcessor_OpticalFlow.h` | Frame-processor wrappers do not expose this configuration enum. |
-| `VTSuperResolutionScalerConfigurationInputType` | enum | `VTFrameProcessor_SuperResolutionScaler.h` | Frame-processor wrappers do not expose this configuration enum. |
-| `VTSuperResolutionScalerConfigurationQualityPrioritization` | enum | `VTFrameProcessor_SuperResolutionScaler.h` | Frame-processor wrappers do not expose this configuration enum. |
-| `VTSuperResolutionScalerConfigurationRevision` | enum | `VTFrameProcessor_SuperResolutionScaler.h` | Frame-processor wrappers do not expose this configuration enum. |
-| `VTFrameSiloCallBlockForEachSampleBuffer` | function | `VTFrameSilo.h` | Crate wraps the function-callback enumerator, not the block-based variant. |
-| `VTHDRPerFrameMetadataGenerationSessionGetTypeID` | function | `VTHDRPerFrameMetadataGenerationSession.h` | HdrMetadataSession hardcodes default options and does not expose HDR-format constants or the type ID. |
-| `kVTHDRPerFrameMetadataGenerationHDRFormatType_DolbyVision` | constant | `VTHDRPerFrameMetadataGenerationSession.h` | HdrMetadataSession hardcodes default options and does not expose HDR-format constants or the type ID. |
-| `kVTHDRPerFrameMetadataGenerationOptionsKey_HDRFormats` | constant | `VTHDRPerFrameMetadataGenerationSession.h` | HdrMetadataSession hardcodes default options and does not expose HDR-format constants or the type ID. |
-| `VTMotionEstimationFrameFlags` | options | `VTMotionEstimationSession.h` | Typed flag alias is not exposed; current APIs use raw integers or fixed defaults. |
-| `VTMotionEstimationInfoFlags` | options | `VTMotionEstimationSession.h` | Typed flag alias is not exposed; current APIs use raw integers or fixed defaults. |
-| `kVTMotionEstimationSessionCreationOption_Label` | constant | `VTMotionEstimationSessionProperties.h` | MotionEstimationSession::new always passes null creation options; these option keys are not exposed. |
-| `kVTMotionEstimationSessionCreationOption_MotionVectorSize` | constant | `VTMotionEstimationSessionProperties.h` | MotionEstimationSession::new always passes null creation options; these option keys are not exposed. |
-| `kVTMotionEstimationSessionCreationOption_UseMultiPassSearch` | constant | `VTMotionEstimationSessionProperties.h` | MotionEstimationSession::new always passes null creation options; these option keys are not exposed. |
-| `kVTRAWProcessingPropertyKey_MetadataForSidecarFile` | constant | `VTRAWProcessingProperties.h` | RawProcessingSession does not expose these RAW-session property keys. |
-| `kVTRAWProcessingPropertyKey_MetalDeviceRegistryID` | constant | `VTRAWProcessingProperties.h` | RawProcessingSession does not expose these RAW-session property keys. |
-| `kVTRAWProcessingPropertyKey_OutputColorAttachments` | constant | `VTRAWProcessingProperties.h` | RawProcessingSession does not expose these RAW-session property keys. |
-| `VTRAWProcessingSessionSetParameterChangedHandler` | function | `VTRAWProcessingSession.h` | Parameter-change callback API is not exposed. |
-| `kVTPropertyDocumentationKey` | constant | `VTSession.h` | Generic VTSession property APIs are wrapped, but these metadata constants are not exported. |
-| `kVTPropertyReadWriteStatusKey` | constant | `VTSession.h` | Generic VTSession property APIs are wrapped, but these metadata constants are not exported. |
-| `kVTPropertyReadWriteStatus_ReadOnly` | constant | `VTSession.h` | Generic VTSession property APIs are wrapped, but these metadata constants are not exported. |
-| `kVTPropertyReadWriteStatus_ReadWrite` | constant | `VTSession.h` | Generic VTSession property APIs are wrapped, but these metadata constants are not exported. |
-| `kVTPropertyShouldBeSerializedKey` | constant | `VTSession.h` | Generic VTSession property APIs are wrapped, but these metadata constants are not exported. |
-| `kVTPropertySupportedValueListKey` | constant | `VTSession.h` | Generic VTSession property APIs are wrapped, but these metadata constants are not exported. |
-| `kVTPropertySupportedValueMaximumKey` | constant | `VTSession.h` | Generic VTSession property APIs are wrapped, but these metadata constants are not exported. |
-| `kVTPropertySupportedValueMinimumKey` | constant | `VTSession.h` | Generic VTSession property APIs are wrapped, but these metadata constants are not exported. |
-| `kVTPropertyTypeKey` | constant | `VTSession.h` | Generic VTSession property APIs are wrapped, but these metadata constants are not exported. |
-| `kVTPropertyType_Boolean` | constant | `VTSession.h` | Generic VTSession property APIs are wrapped, but these metadata constants are not exported. |
-| `kVTPropertyType_Enumeration` | constant | `VTSession.h` | Generic VTSession property APIs are wrapped, but these metadata constants are not exported. |
-| `kVTPropertyType_Number` | constant | `VTSession.h` | Generic VTSession property APIs are wrapped, but these metadata constants are not exported. |
-| `VTCopyRAWProcessorExtensionProperties` | function | `VTUtilities.h` | utilities module omits supplemental decoder and extension-property helpers. |
-| `VTCopyVideoDecoderExtensionProperties` | function | `VTUtilities.h` | utilities module omits supplemental decoder and extension-property helpers. |
-| `VTRegisterSupplementalVideoDecoderIfAvailable` | function | `VTUtilities.h` | utilities module omits supplemental decoder and extension-property helpers. |
-| `kVTExtensionProperties_CodecNameKey` | constant | `VTUtilities.h` | utilities module omits supplemental decoder and extension-property helpers. |
-| `kVTExtensionProperties_ContainingBundleNameKey` | constant | `VTUtilities.h` | utilities module omits supplemental decoder and extension-property helpers. |
-| `kVTExtensionProperties_ContainingBundleURLKey` | constant | `VTUtilities.h` | utilities module omits supplemental decoder and extension-property helpers. |
-| `kVTExtensionProperties_ExtensionIdentifierKey` | constant | `VTUtilities.h` | utilities module omits supplemental decoder and extension-property helpers. |
-| `kVTExtensionProperties_ExtensionNameKey` | constant | `VTUtilities.h` | utilities module omits supplemental decoder and extension-property helpers. |
-| `kVTExtensionProperties_ExtensionURLKey` | constant | `VTUtilities.h` | utilities module omits supplemental decoder and extension-property helpers. |
+| `VTFrameRateConversionConfigurationQualityPrioritization` | enum | `VTFrameProcessor_FrameRateConversion.h` | `frame_processor::VTFrameRateConversionConfigurationQualityPrioritization` |
+| `VTFrameRateConversionConfigurationRevision` | enum | `VTFrameProcessor_FrameRateConversion.h` | `frame_processor::VTFrameRateConversionConfigurationRevision` |
+| `VTMotionBlurConfigurationQualityPrioritization` | enum | `VTFrameProcessor_MotionBlur.h` | `frame_processor::VTMotionBlurConfigurationQualityPrioritization` |
+| `VTMotionBlurConfigurationRevision` | enum | `VTFrameProcessor_MotionBlur.h` | `frame_processor::VTMotionBlurConfigurationRevision` |
+| `VTOpticalFlowConfigurationQualityPrioritization` | enum | `VTFrameProcessor_OpticalFlow.h` | `frame_processor::VTOpticalFlowConfigurationQualityPrioritization` |
+| `VTOpticalFlowConfigurationRevision` | enum | `VTFrameProcessor_OpticalFlow.h` | `frame_processor::VTOpticalFlowConfigurationRevision` |
+| `VTSuperResolutionScalerConfigurationInputType` | enum | `VTFrameProcessor_SuperResolutionScaler.h` | `frame_processor::VTSuperResolutionScalerConfigurationInputType` |
+| `VTSuperResolutionScalerConfigurationQualityPrioritization` | enum | `VTFrameProcessor_SuperResolutionScaler.h` | `frame_processor::VTSuperResolutionScalerConfigurationQualityPrioritization` |
+| `VTSuperResolutionScalerConfigurationRevision` | enum | `VTFrameProcessor_SuperResolutionScaler.h` | `frame_processor::VTSuperResolutionScalerConfigurationRevision` |
+| `VTFrameSiloCallBlockForEachSampleBuffer` | function | `VTFrameSilo.h` | `ffi::VTFrameSiloCallBlockForEachSampleBuffer` |
+| `VTHDRPerFrameMetadataGenerationSessionGetTypeID` | function | `VTHDRPerFrameMetadataGenerationSession.h` | `HdrMetadataSession::type_id` |
+| `kVTHDRPerFrameMetadataGenerationHDRFormatType_DolbyVision` | constant | `VTHDRPerFrameMetadataGenerationSession.h` | `hdr_metadata::HdrMetadataFormat::DolbyVision + ffi::kVTHDRPerFrameMetadataGenerationHDRFormatType_DolbyVision` |
+| `kVTHDRPerFrameMetadataGenerationOptionsKey_HDRFormats` | constant | `VTHDRPerFrameMetadataGenerationSession.h` | `HdrMetadataSession::new_with_formats + ffi::kVTHDRPerFrameMetadataGenerationOptionsKey_HDRFormats` |
+| `VTMotionEstimationFrameFlags` | options | `VTMotionEstimationSession.h` | `ffi::VTMotionEstimationFrameFlags + MotionEstimationSession::estimate_with_options` |
+| `VTMotionEstimationInfoFlags` | options | `VTMotionEstimationSession.h` | `ffi::VTMotionEstimationInfoFlags + MotionEstimationResult::info_flags` |
+| `kVTMotionEstimationSessionCreationOption_Label` | constant | `VTMotionEstimationSessionProperties.h` | `MotionEstimationSessionOptions::label + ffi::kVTMotionEstimationSessionCreationOption_Label` |
+| `kVTMotionEstimationSessionCreationOption_MotionVectorSize` | constant | `VTMotionEstimationSessionProperties.h` | `MotionEstimationSessionOptions::motion_vector_size + ffi::kVTMotionEstimationSessionCreationOption_MotionVectorSize` |
+| `kVTMotionEstimationSessionCreationOption_UseMultiPassSearch` | constant | `VTMotionEstimationSessionProperties.h` | `MotionEstimationSessionOptions::use_multi_pass_search + ffi::kVTMotionEstimationSessionCreationOption_UseMultiPassSearch` |
+| `kVTRAWProcessingPropertyKey_MetadataForSidecarFile` | constant | `VTRAWProcessingProperties.h` | `RawProcessingSession::metadata_for_sidecar_file + ffi::kVTRAWProcessingPropertyKey_MetadataForSidecarFile` |
+| `kVTRAWProcessingPropertyKey_MetalDeviceRegistryID` | constant | `VTRAWProcessingProperties.h` | `RawProcessingSession::metal_device_registry_id + ffi::kVTRAWProcessingPropertyKey_MetalDeviceRegistryID` |
+| `kVTRAWProcessingPropertyKey_OutputColorAttachments` | constant | `VTRAWProcessingProperties.h` | `RawProcessingSession::output_color_attachments + ffi::kVTRAWProcessingPropertyKey_OutputColorAttachments` |
+| `VTRAWProcessingSessionSetParameterChangedHandler` | function | `VTRAWProcessingSession.h` | `RawProcessingSession::set_parameter_changed_handler / clear_parameter_changed_handler via swift-bridge` |
+| `kVTPropertyDocumentationKey` | constant | `VTSession.h` | `ffi::kVTPropertyDocumentationKey` |
+| `kVTPropertyReadWriteStatusKey` | constant | `VTSession.h` | `ffi::kVTPropertyReadWriteStatusKey` |
+| `kVTPropertyReadWriteStatus_ReadOnly` | constant | `VTSession.h` | `ffi::kVTPropertyReadWriteStatus_ReadOnly` |
+| `kVTPropertyReadWriteStatus_ReadWrite` | constant | `VTSession.h` | `ffi::kVTPropertyReadWriteStatus_ReadWrite` |
+| `kVTPropertyShouldBeSerializedKey` | constant | `VTSession.h` | `ffi::kVTPropertyShouldBeSerializedKey` |
+| `kVTPropertySupportedValueListKey` | constant | `VTSession.h` | `ffi::kVTPropertySupportedValueListKey` |
+| `kVTPropertySupportedValueMaximumKey` | constant | `VTSession.h` | `ffi::kVTPropertySupportedValueMaximumKey` |
+| `kVTPropertySupportedValueMinimumKey` | constant | `VTSession.h` | `ffi::kVTPropertySupportedValueMinimumKey` |
+| `kVTPropertyTypeKey` | constant | `VTSession.h` | `ffi::kVTPropertyTypeKey` |
+| `kVTPropertyType_Boolean` | constant | `VTSession.h` | `ffi::kVTPropertyType_Boolean` |
+| `kVTPropertyType_Enumeration` | constant | `VTSession.h` | `ffi::kVTPropertyType_Enumeration` |
+| `kVTPropertyType_Number` | constant | `VTSession.h` | `ffi::kVTPropertyType_Number` |
+| `VTCopyRAWProcessorExtensionProperties` | function | `VTUtilities.h` | `utilities::copy_raw_processor_extension_properties + ffi::VTCopyRAWProcessorExtensionProperties` |
+| `VTCopyVideoDecoderExtensionProperties` | function | `VTUtilities.h` | `utilities::copy_video_decoder_extension_properties + ffi::VTCopyVideoDecoderExtensionProperties` |
+| `VTRegisterSupplementalVideoDecoderIfAvailable` | function | `VTUtilities.h` | `utilities::register_supplemental_video_decoder_if_available + ffi::VTRegisterSupplementalVideoDecoderIfAvailable` |
+| `kVTExtensionProperties_CodecNameKey` | constant | `VTUtilities.h` | `ffi::kVTExtensionProperties_CodecNameKey` |
+| `kVTExtensionProperties_ContainingBundleNameKey` | constant | `VTUtilities.h` | `ffi::kVTExtensionProperties_ContainingBundleNameKey` |
+| `kVTExtensionProperties_ContainingBundleURLKey` | constant | `VTUtilities.h` | `ffi::kVTExtensionProperties_ContainingBundleURLKey` |
+| `kVTExtensionProperties_ExtensionIdentifierKey` | constant | `VTUtilities.h` | `ffi::kVTExtensionProperties_ExtensionIdentifierKey` |
+| `kVTExtensionProperties_ExtensionNameKey` | constant | `VTUtilities.h` | `ffi::kVTExtensionProperties_ExtensionNameKey` |
+| `kVTExtensionProperties_ExtensionURLKey` | constant | `VTUtilities.h` | `ffi::kVTExtensionProperties_ExtensionURLKey` |
 
 ## ⏭️ EXEMPT
 | Symbol | Kind | Header | Reason | SDK attribute |

@@ -69,7 +69,7 @@ pub use encoder_list::{
     EncoderSupportedProperties, VideoEncoder, VideoEncoderDetails, VideoEncoderListOptions,
 };
 pub use error::VTError;
-pub use hdr_metadata::HdrMetadataSession;
+pub use hdr_metadata::{HdrMetadataFormat, HdrMetadataSession};
 pub use multipass::{FrameSilo, MultiPassStorage};
 pub use session::Codec;
 pub use tagged_buffer_group::TaggedBufferGroup;
@@ -77,21 +77,36 @@ pub use transfer::{
     DownsamplingMode, PixelRotationSession, PixelTransferSession, Rotation, ScalingMode,
 };
 pub use utilities::{
+    copy_raw_processor_extension_properties, copy_video_decoder_extension_properties,
     create_cg_image_from_pixel_buffer, is_hardware_decode_supported,
     register_professional_workflow_decoders, register_professional_workflow_encoders,
+    register_supplemental_video_decoder_if_available,
 };
 
 #[cfg(feature = "frame_processor")]
 pub use frame_processor::{
-    download_super_resolution_model, frame_processor_capabilities,
-    low_latency_super_resolution_supported_scale_factors,
-    super_resolution_model_percentage_available, super_resolution_model_status,
+    download_super_resolution_model, download_super_resolution_model_for_configuration,
+    frame_processor_capabilities, low_latency_super_resolution_supported_scale_factors,
+    super_resolution_model_percentage_available,
+    super_resolution_model_percentage_available_for_configuration,
+    super_resolution_model_status, super_resolution_model_status_for_configuration,
     super_resolution_supported_scale_factors, FrameProcessor, FrameProcessorCapabilities,
     FrameProcessorFrame, FrameProcessorOpticalFlow, FrameProcessorSubmissionMode,
-    FrameRateConversionSubmissionMode, SuperResolutionModelStatus,
+    FrameRateConversionConfiguration, FrameRateConversionSubmissionMode,
+    MotionBlurConfiguration, OpticalFlowConfiguration, SuperResolutionConfiguration,
+    SuperResolutionModelStatus,
+    VTFrameRateConversionConfigurationQualityPrioritization,
+    VTFrameRateConversionConfigurationRevision,
+    VTMotionBlurConfigurationQualityPrioritization, VTMotionBlurConfigurationRevision,
+    VTOpticalFlowConfigurationQualityPrioritization, VTOpticalFlowConfigurationRevision,
+    VTSuperResolutionScalerConfigurationInputType,
+    VTSuperResolutionScalerConfigurationQualityPrioritization,
+    VTSuperResolutionScalerConfigurationRevision,
 };
 #[cfg(feature = "frame_processor")]
-pub use motion_estimation::MotionEstimationSession;
+pub use motion_estimation::{
+    MotionEstimationResult, MotionEstimationSession, MotionEstimationSessionOptions,
+};
 #[cfg(feature = "frame_processor")]
 pub use raw_processing::{RawProcessingParameter, RawProcessingSession};
 
