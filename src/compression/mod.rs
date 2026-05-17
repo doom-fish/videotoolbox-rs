@@ -122,6 +122,8 @@ macro_rules! define_profile_levels {
 
         impl ProfileLevel {
             pub(crate) fn as_cf_string(self) -> ffi::CFStringRef {
+                // SAFETY: FFI constants are statically defined by Apple's VideoToolbox SDK.
+                // Returning them as immutable references is safe.
                 unsafe {
                     match self {
                         $(
@@ -308,6 +310,8 @@ impl CompressionSession {
     /// CoreFoundation type identifier for `VTCompressionSession`.
     #[must_use]
     pub fn type_id() -> usize {
+        // SAFETY: `VTCompressionSessionGetTypeID` is a standard Apple SDK function
+        // that returns a static type ID. Safe to call from any thread.
         unsafe { ffi::VTCompressionSessionGetTypeID() }
     }
 
@@ -315,6 +319,8 @@ impl CompressionSession {
     /// encode support.
     #[must_use]
     pub fn is_stereo_mvhevc_encode_supported() -> bool {
+        // SAFETY: `VTIsStereoMVHEVCEncodeSupported` is a standard query function
+        // that performs no I/O and has no side effects.
         unsafe { ffi::VTIsStereoMVHEVCEncodeSupported() != 0 }
     }
 
@@ -322,10 +328,13 @@ impl CompressionSession {
     /// returned wrapper owns its lifetime independently of the session.
     #[must_use]
     pub fn pixel_buffer_pool(&self) -> Option<CVPixelBufferPool> {
+        // SAFETY: `VTCompressionSessionGetPixelBufferPool` returns a borrowed reference
+        // to the pool (not retained). We call CFRetain to extend its lifetime.
         let pool = unsafe { ffi::VTCompressionSessionGetPixelBufferPool(self.session) };
         if pool.is_null() {
             return None;
         }
+        // SAFETY: Incrementing the retain count on a valid CFType is safe.
         unsafe { ffi::CFRetain(pool.cast()) };
         CVPixelBufferPool::from_raw(pool.cast())
     }
@@ -350,6 +359,7 @@ impl CompressionSession {
     ///
     /// Returns [`VTError::ApiFailed`] if the query fails.
     pub fn supported_property_dictionary(&self) -> Result<CFDictionary, VTError> {
+        // SAFETY: `copy_supported_property_dictionary` is called with a valid session pointer.
         unsafe { session::copy_supported_property_dictionary(self.session.cast()) }
     }
 
@@ -359,6 +369,7 @@ impl CompressionSession {
     ///
     /// Returns [`VTError::ApiFailed`] if the query fails.
     pub fn serializable_properties(&self) -> Result<CFDictionary, VTError> {
+        // SAFETY: `copy_serializable_properties` is called with a valid session pointer.
         unsafe { session::copy_serializable_properties(self.session.cast()) }
     }
 
@@ -368,6 +379,7 @@ impl CompressionSession {
     ///
     /// Returns [`VTError::ApiFailed`] if `VideoToolbox` rejects the dictionary.
     pub fn set_properties(&self, properties: &CFDictionary) -> Result<(), VTError> {
+        // SAFETY: `set_properties` is called with a valid session pointer and a valid dictionary.
         unsafe { session::set_properties(self.session.cast(), properties) }
     }
 
@@ -476,6 +488,10 @@ impl CompressionSession {
             .cast_mut();
 
         let mut session_ptr: ffi::VTCompressionSessionRef = ptr::null_mut();
+        // SAFETY: `VTCompressionSessionCreate` is a standard Apple SDK function.
+        // All arguments are valid pointers/values: allocator is default, callback is a valid
+        // C function, ref_con points to an Arc that will be owned by the callback,
+        // and session_ptr is uninitialized but properly initialized on return.
         let status = unsafe {
             ffi::VTCompressionSessionCreate(
                 ffi::kCFAllocatorDefault,
@@ -492,6 +508,8 @@ impl CompressionSession {
         };
         if status != 0 || session_ptr.is_null() {
             // Drop the leaked Arc clone since the encoder will never call us back.
+            // SAFETY: This Arc was created via `Arc::into_raw` below and leaked to VideoToolbox.
+            // If initialization fails, we must recover and drop it to avoid a leak.
             unsafe { drop(Arc::from_raw(callback_ref_con.cast::<EncoderState>())) };
             return Err(VTError::SessionCreateFailed(status));
         }

@@ -74,6 +74,9 @@ unsafe impl Sync for DecompressionSession {}
 impl Drop for DecompressionSession {
     fn drop(&mut self) {
         if !self.session.is_null() {
+            // SAFETY: `VTDecompressionSessionInvalidate` and `CFRelease` are standard Apple
+            // SDK functions. The session pointer is valid (checked for null). We own the
+            // session reference and are releasing it correctly.
             unsafe {
                 ffi::VTDecompressionSessionInvalidate(self.session);
                 ffi::CFRelease(self.session.cast_const());
@@ -87,6 +90,8 @@ impl DecompressionSession {
     /// CoreFoundation type identifier for `VTDecompressionSession`.
     #[must_use]
     pub fn type_id() -> usize {
+        // SAFETY: `VTDecompressionSessionGetTypeID` is a standard Apple SDK function
+        // that returns a static type ID. Safe to call from any thread.
         unsafe { ffi::VTDecompressionSessionGetTypeID() }
     }
 
@@ -94,6 +99,8 @@ impl DecompressionSession {
     /// the given codec family.
     #[must_use]
     pub fn is_hardware_decode_supported(codec: Codec) -> bool {
+        // SAFETY: `VTIsHardwareDecodeSupported` is a standard query function
+        // that performs no I/O and has no side effects.
         unsafe { ffi::VTIsHardwareDecodeSupported(codec.as_cm_codec_type()) != 0 }
     }
 
@@ -101,6 +108,8 @@ impl DecompressionSession {
     /// decode support.
     #[must_use]
     pub fn is_stereo_mvhevc_decode_supported() -> bool {
+        // SAFETY: `VTIsStereoMVHEVCDecodeSupported` is a standard query function
+        // that performs no I/O and has no side effects.
         unsafe { ffi::VTIsStereoMVHEVCDecodeSupported() != 0 }
     }
 
