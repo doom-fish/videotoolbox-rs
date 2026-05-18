@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.16.1] - 2026-05-18
+
+### Changed
+
+- Re-exported `Boolean` and `OSStatus` from `apple_cf::raw`, removing the remaining crate-local primitive aliases.
+
 ## [0.16.0] - 2026-05-18
 
 ### Changed

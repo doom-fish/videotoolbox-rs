@@ -11,7 +11,7 @@ use core::ffi::{c_char, c_uint, c_void};
 
 // ---- type aliases that match the C headers ----
 
-pub type OSStatus = i32;
+pub use apple_cf::raw::OSStatus;
 
 pub use apple_cf::cm::{CMTime, CMTimeRange};
 
@@ -146,7 +146,7 @@ extern "C" {
 
 // ---- CoreMedia: CMSampleBuffer ----
 
-pub type Boolean = u8;
+pub use apple_cf::raw::Boolean;
 
 extern "C" {
     pub fn CMSampleBufferGetDataBuffer(sbuf: CMSampleBufferRef) -> CMBlockBufferRef;
