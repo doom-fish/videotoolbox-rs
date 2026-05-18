@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.14.0] - 2026-05-18
+
+### Changed
+
+- Re-export `CFAllocatorRef`, `CFTypeRef`, `CFStringRef`, `CFNumberRef`, `CFBooleanRef`, `CFDictionaryRef`, `CFMutableDictionaryRef`, `CFArrayRef`, and `CFURLRef` from `apple_cf::raw` instead of defining crate-local duplicates. This is a breaking change for code that relied on the old local aliases, and it aligns the FFI surface with the shared CoreFoundation definitions.
+
 ## [0.13.1] - 2026-05-18
 
 - Widen apple-cf version bound to `<0.9` so the 0.8.0 nested-CGRect dep resolves. No source changes.

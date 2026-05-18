@@ -80,7 +80,7 @@ impl HdrMetadataSession {
                 fps,
                 options
                     .as_ref()
-                    .map_or(ptr::null(), |dict| dict.as_ptr().cast_const()),
+                    .map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
                 &mut p,
             )
         };
@@ -147,6 +147,9 @@ fn build_hdr_options(hdr_formats: &[HdrMetadataFormat]) -> Option<CFDictionary> 
     )]))
 }
 
-fn retained_cf_type(raw: *mut c_void) -> CFType {
-    unsafe { CFType::from_raw_retained(raw).expect("VideoToolbox HDR constant must be non-null") }
+fn retained_cf_type<T>(raw: *mut T) -> CFType {
+    unsafe {
+        CFType::from_raw_retained(raw.cast())
+            .expect("VideoToolbox HDR constant must be non-null")
+    }
 }

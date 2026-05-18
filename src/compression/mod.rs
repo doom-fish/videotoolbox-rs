@@ -650,7 +650,7 @@ impl CompressionSession {
                 image_buffer.as_ptr(),
                 presentation_timestamp,
                 duration,
-                frame_properties_ref.map_or(ptr::null(), |dict| dict.as_ptr().cast_const()),
+                frame_properties_ref.map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
                 context.cast::<c_void>(),
                 ptr::null_mut(),
             )
@@ -744,7 +744,7 @@ impl CompressionSession {
         } else {
             unsafe { ffi::kCFBooleanFalse }
         };
-        let status = unsafe { ffi::VTSessionSetProperty(self.session, key, cf_value) };
+        let status = unsafe { ffi::VTSessionSetProperty(self.session, key, cf_value.cast()) };
         if status != 0 {
             return Err(VTError::SetPropertyFailed {
                 key: key_name.to_string(),
@@ -767,8 +767,8 @@ impl CompressionSession {
                 core::ptr::from_ref(&value).cast(),
             )
         };
-        let status = unsafe { ffi::VTSessionSetProperty(self.session, key, value_ref) };
-        unsafe { ffi::CFRelease(value_ref) };
+        let status = unsafe { ffi::VTSessionSetProperty(self.session, key, value_ref.cast()) };
+        unsafe { ffi::CFRelease(value_ref.cast()) };
         if status != 0 {
             return Err(VTError::SetPropertyFailed {
                 key: key_name.to_string(),
@@ -791,8 +791,8 @@ impl CompressionSession {
                 core::ptr::from_ref(&value).cast(),
             )
         };
-        let status = unsafe { ffi::VTSessionSetProperty(self.session, key, value_ref) };
-        unsafe { ffi::CFRelease(value_ref) };
+        let status = unsafe { ffi::VTSessionSetProperty(self.session, key, value_ref.cast()) };
+        unsafe { ffi::CFRelease(value_ref.cast()) };
         if status != 0 {
             return Err(VTError::SetPropertyFailed {
                 key: key_name.to_string(),

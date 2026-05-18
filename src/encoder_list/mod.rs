@@ -129,7 +129,7 @@ pub fn available_video_encoder_details_with_options(
         ffi::VTCopyVideoEncoderList(
             options_dict
                 .as_ref()
-                .map_or(ptr::null(), |dict| dict.as_ptr().cast_const()),
+                .map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
             &mut arr,
         )
     };
@@ -142,12 +142,12 @@ pub fn available_video_encoder_details_with_options(
     let count = unsafe { ffi::CFArrayGetCount(arr) };
     let mut encoders = Vec::with_capacity(usize::try_from(count).unwrap_or(0));
     for index in 0..count {
-        let dict = unsafe { ffi::CFArrayGetValueAtIndex(arr, index) }.cast::<c_void>();
+        let dict: ffi::CFDictionaryRef = unsafe { ffi::CFArrayGetValueAtIndex(arr, index) }.cast();
         if !dict.is_null() {
             encoders.push(unsafe { parse_video_encoder_details(dict) });
         }
     }
-    unsafe { ffi::CFRelease(arr) };
+    unsafe { ffi::CFRelease(arr.cast()) };
     Ok(encoders)
 }
 
@@ -176,7 +176,7 @@ pub fn supported_property_dictionary_for_encoder(
             codec.as_cm_codec_type(),
             encoder_specification
                 .as_ref()
-                .map_or(ptr::null(), |dict| dict.as_ptr().cast_const()),
+                .map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
             &mut encoder_id_out,
             &mut supported_properties_out,
         )
@@ -185,9 +185,9 @@ pub fn supported_property_dictionary_for_encoder(
         return Err(status);
     }
 
-    let encoder_id =
-        CFString::from_raw(encoder_id_out.cast_mut()).map(|string| string.to_string_lossy());
-    let supported_properties = CFDictionary::from_raw(supported_properties_out.cast_mut());
+    let encoder_id = CFString::from_raw(encoder_id_out.cast_mut().cast())
+        .map(|string| string.to_string_lossy());
+    let supported_properties = CFDictionary::from_raw(supported_properties_out.cast_mut().cast());
 
     Ok(EncoderSupportedProperties {
         encoder_id,
@@ -195,7 +195,7 @@ pub fn supported_property_dictionary_for_encoder(
     })
 }
 
-unsafe fn parse_video_encoder_details(dict: *const c_void) -> VideoEncoderDetails {
+unsafe fn parse_video_encoder_details(dict: ffi::CFDictionaryRef) -> VideoEncoderDetails {
     let codec_type = unsafe {
         let number = ffi::CFDictionaryGetValue(dict, ffi::kVTVideoEncoderList_CodecType.cast());
         cf_number_u32(number).unwrap_or(0)

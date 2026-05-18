@@ -345,9 +345,7 @@ fn parameters_from_array(arr: ffi::CFArrayRef) -> Vec<RawProcessingParameter> {
         let dict = unsafe { ffi::CFArrayGetValueAtIndex(arr, i) };
         if !dict.is_null() {
             unsafe { ffi::CFRetain(dict.cast()) };
-            out.push(RawProcessingParameter {
-                dict: dict.cast_mut(),
-            });
+            out.push(RawProcessingParameter { dict: dict.cast() });
         }
     }
     out
@@ -400,7 +398,7 @@ unsafe extern "C" fn raw_process_async_trampoline(
 ///
 /// Wraps a `CFDictionary` returned by `VTRAWProcessingSession::parameters`.
 pub struct RawProcessingParameter {
-    dict: *mut c_void,
+    dict: ffi::CFDictionaryRef,
 }
 
 unsafe impl Send for RawProcessingParameter {}
@@ -410,7 +408,7 @@ impl Drop for RawProcessingParameter {
     fn drop(&mut self) {
         if !self.dict.is_null() {
             unsafe { ffi::CFRelease(self.dict.cast()) };
-            self.dict = ptr::null_mut();
+            self.dict = ptr::null();
         }
     }
 }
@@ -488,7 +486,7 @@ impl RawProcessingParameter {
         if v.is_null() {
             return None;
         }
-        let len = unsafe { ffi::CFStringGetLength(v) };
+        let len = unsafe { ffi::CFStringGetLength(v.cast()) };
         if len < 0 {
             return None;
         }
@@ -496,7 +494,7 @@ impl RawProcessingParameter {
         let mut buf = vec![0u8; cap];
         let ok = unsafe {
             ffi::CFStringGetCString(
-                v,
+                v.cast(),
                 buf.as_mut_ptr().cast(),
                 cap as isize,
                 ffi::kCFStringEncodingUTF8,
@@ -516,7 +514,7 @@ impl RawProcessingParameter {
         }
         let mut out: f64 = 0.0;
         let ok =
-            unsafe { ffi::CFNumberGetValue(v, ffi::kCFNumberFloat64Type, (&raw mut out).cast()) };
+            unsafe { ffi::CFNumberGetValue(v.cast(), ffi::kCFNumberFloat64Type, (&raw mut out).cast()) };
         if ok {
             Some(out)
         } else {

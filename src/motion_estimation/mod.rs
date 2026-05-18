@@ -97,7 +97,7 @@ impl MotionEstimationSession {
                 ffi::kCFAllocatorDefault,
                 creation_options
                     .as_ref()
-                    .map_or(ptr::null(), |dict| dict.as_ptr().cast_const()),
+                    .map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
                 width,
                 height,
                 &mut p,
@@ -123,7 +123,7 @@ impl MotionEstimationSession {
         if s != 0 {
             return Err(VTError::EncodeFailed(s));
         }
-        Ok(attrs)
+        Ok(attrs.cast())
     }
 
     /// Force-complete any outstanding estimations.
@@ -241,9 +241,9 @@ fn build_creation_options(
     Ok(Some(CFDictionary::from_pairs(&pairs)))
 }
 
-fn retained_cf_type(raw: *mut c_void) -> CFType {
+fn retained_cf_type<T>(raw: *mut T) -> CFType {
     unsafe {
-        CFType::from_raw_retained(raw)
+        CFType::from_raw_retained(raw.cast())
             .expect("VideoToolbox motion-estimation constant must be non-null")
     }
 }

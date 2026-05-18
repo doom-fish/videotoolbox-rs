@@ -81,15 +81,10 @@ pub const kVTMotionEstimationInfoFlags_Reserved0: VTMotionEstimationInfoFlags = 
 
 // ---- CoreFoundation minimum required surface ----
 
-pub type CFAllocatorRef = *const c_void;
-pub type CFTypeRef = *const c_void;
-pub type CFStringRef = *const c_void;
-pub type CFNumberRef = *const c_void;
-pub type CFBooleanRef = *const c_void;
-pub type CFDictionaryRef = *const c_void;
-pub type CFMutableDictionaryRef = *mut c_void;
-pub type CFArrayRef = *const c_void;
-pub type CFURLRef = *const c_void;
+pub use apple_cf::raw::{
+    CFAllocatorRef, CFArrayRef, CFBooleanRef, CFDictionaryRef, CFMutableDictionaryRef,
+    CFNumberRef, CFStringRef, CFTypeRef, CFURLRef,
+};
 pub type VTExtensionPropertiesKey = CFStringRef;
 pub type VTHDRPerFrameMetadataGenerationHDRFormatType = CFStringRef;
 

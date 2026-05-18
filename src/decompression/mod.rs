@@ -203,7 +203,7 @@ impl DecompressionSession {
                 self.session,
                 sample_buffer.as_ptr(),
                 decode_flags,
-                frame_options.map_or(ptr::null(), |dict| dict.as_ptr().cast_const()),
+                frame_options.map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
                 ptr::null_mut(),
                 &mut info_flags,
             )
@@ -451,7 +451,7 @@ impl DecompressionSession {
                 v.cast(),
             )
         };
-        unsafe { ffi::CFRelease(v) };
+        unsafe { ffi::CFRelease(v.cast()) };
         r
     }
 

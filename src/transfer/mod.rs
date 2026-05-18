@@ -386,7 +386,7 @@ impl PixelRotationSession {
             ffi::VTSessionSetProperty(
                 self.session,
                 ffi::kVTPixelRotationPropertyKey_FlipHorizontalOrientation,
-                cf,
+                cf.cast(),
             )
         };
         if status != 0 {
@@ -416,7 +416,7 @@ impl PixelRotationSession {
             ffi::VTSessionSetProperty(
                 self.session,
                 ffi::kVTPixelRotationPropertyKey_FlipVerticalOrientation,
-                cf,
+                cf.cast(),
             )
         };
         if status != 0 {
