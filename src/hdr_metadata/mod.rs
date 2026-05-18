@@ -1,7 +1,6 @@
 //! `VTHDRPerFrameMetadataGenerationSession` — generate Dolby Vision
 //! per-frame HDR metadata (macOS 15+).
 
-use core::ffi::c_void;
 use core::ptr;
 
 use apple_cf::{
@@ -106,7 +105,7 @@ impl HdrMetadataSession {
         let s = unsafe {
             ffi::VTHDRPerFrameMetadataGenerationSessionAttachMetadata(
                 self.inner,
-                pixel_buffer.as_ptr().cast::<c_void>(),
+                pixel_buffer.as_ptr().cast(),
                 scene_change,
             )
         };

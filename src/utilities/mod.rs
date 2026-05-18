@@ -22,7 +22,7 @@ pub fn create_cg_image_from_pixel_buffer(
     let mut img: *mut c_void = ptr::null_mut();
     let s = unsafe {
         ffi::VTCreateCGImageFromCVPixelBuffer(
-            pixel_buffer.as_ptr().cast::<c_void>(),
+            pixel_buffer.as_ptr().cast(),
             ptr::null(),
             &mut img,
         )

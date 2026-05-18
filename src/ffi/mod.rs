@@ -175,8 +175,7 @@ extern "C" {
 
 // ---- CoreVideo: CVPixelBuffer (we only need create-with-IOSurface here) ----
 
-pub type CVPixelBufferRef = *mut c_void;
-pub type CVPixelBufferPoolRef = *mut c_void;
+pub use apple_cf::raw::{CVPixelBufferPoolRef, CVPixelBufferRef};
 pub type IOSurfaceRef = *mut c_void;
 
 extern "C" {

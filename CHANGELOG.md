@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.16.0] - 2026-05-18
+
+### Changed
+
+- Re-export `CVPixelBufferRef` and `CVPixelBufferPoolRef` from `apple_cf::raw`, removing the remaining crate-local CoreVideo duplicate aliases.
+
 ## [0.15.0] - 2026-05-18
 
 ### Changed

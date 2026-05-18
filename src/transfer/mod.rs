@@ -12,7 +12,6 @@
 //!   in 90° increments (with optional horizontal/vertical flips).
 //!   For 90°/270°, the destination's width and height must be swapped.
 
-use core::ffi::c_void;
 use core::ptr;
 
 use apple_cf::cf::{CFDictionary, CFType};
@@ -223,8 +222,8 @@ impl PixelTransferSession {
         let status = unsafe {
             ffi::VTPixelTransferSessionTransferImage(
                 self.session,
-                src.as_ptr().cast::<c_void>(),
-                dst.as_ptr().cast::<c_void>(),
+                src.as_ptr().cast(),
+                dst.as_ptr().cast(),
             )
         };
         if status == 0 {
@@ -439,8 +438,8 @@ impl PixelRotationSession {
         let status = unsafe {
             ffi::VTPixelRotationSessionRotateImage(
                 self.session,
-                src.as_ptr().cast::<c_void>(),
-                dst.as_ptr().cast::<c_void>(),
+                src.as_ptr().cast(),
+                dst.as_ptr().cast(),
             )
         };
         if status == 0 {

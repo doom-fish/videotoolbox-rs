@@ -648,7 +648,7 @@ impl CompressionSession {
         let status = unsafe {
             ffi::VTCompressionSessionEncodeFrame(
                 self.session,
-                image_buffer.as_ptr(),
+                image_buffer.as_ptr().cast(),
                 presentation_timestamp,
                 duration,
                 frame_properties_ref.map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
