@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use apple_cf::{
+    cm::CMFormatDescription,
     cv::{CVPixelBuffer, CVPixelBufferLockFlags},
     iosurface::{IOSurface, IOSurfaceLockOptions},
 };
@@ -55,6 +56,46 @@ pub fn encode_h264_test_frame(width: i32, height: i32) -> Result<EncodedFrame, V
 pub fn make_bgra_pixel_buffer(width: usize, height: usize) -> CVPixelBuffer {
     CVPixelBuffer::create(width, height, BGRA)
         .unwrap_or_else(|status| panic!("CVPixelBuffer::create failed: {status}"))
+}
+
+pub fn make_test_pixel_buffer(width: usize, height: usize) -> CVPixelBuffer {
+    let buffer = make_bgra_pixel_buffer(width, height);
+    fill_test_pixel_pattern(&buffer);
+    buffer
+}
+
+pub fn fill_test_pixel_pattern(buffer: &CVPixelBuffer) {
+    let mut pixels = Vec::with_capacity(buffer.width() * buffer.height());
+    for y in 0..buffer.height() {
+        for x in 0..buffer.width() {
+            let seed = y * buffer.width() + x;
+            pixels.push([
+                u8::try_from(seed % 251).expect("seed must fit in u8"),
+                u8::try_from((seed * 3 + 64) % 251).expect("seed must fit in u8"),
+                u8::try_from((seed * 7 + 128) % 251).expect("seed must fit in u8"),
+                0xFF,
+            ]);
+        }
+    }
+    fill_bgra_pixels(buffer, &pixels);
+}
+
+pub fn make_video_format_description(
+    pixel_buffer: &CVPixelBuffer,
+) -> Result<CMFormatDescription, i32> {
+    let mut desc: apple_cf::raw::CMVideoFormatDescriptionRef = core::ptr::null();
+    let status = unsafe {
+        apple_cf::raw::CMVideoFormatDescriptionCreateForImageBuffer(
+            apple_cf::raw::kCFAllocatorDefault,
+            pixel_buffer.as_ptr().cast(),
+            &raw mut desc,
+        )
+    };
+    if status == 0 && !desc.is_null() {
+        CMFormatDescription::from_raw(desc.cast_mut().cast()).ok_or(status)
+    } else {
+        Err(status)
+    }
 }
 
 pub fn fill_bgra_pixels(buffer: &CVPixelBuffer, pixels: &[[u8; 4]]) {

@@ -1,6 +1,6 @@
 [package]
 name = "videotoolbox"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/doom-fish/videotoolbox-rs"
@@ -42,17 +42,21 @@ default = ["compression"]
 # for the decoder symbols, and vice versa).
 compression = []
 decompression = []
+# Future-based completion wrappers over the one-shot VideoToolbox callbacks.
+async = ["dep:doom-fish-utils"]
 # Brings in a small Swift bridge so we can reach VTFrameProcessor (an
 # Objective-C-only API the pure-C FFI can't otherwise call). Off by default
 # so existing pure-C users don't pay for the `swift build` step.
 frame_processor = ["dep:apple-metal"]
-all-features-flag = ["compression", "decompression", "frame_processor"]
+all-features-flag = ["compression", "decompression", "async", "frame_processor"]
 
 [dependencies]
 apple-cf = { path = "../apple-cf-rs", version = ">=0.6, <0.8", default-features = false, features = ["cm", "iosurface", "cv"] }
 apple-metal = { path = "../apple-metal-rs", version = ">=0.6, <0.9", default-features = false, optional = true }
+doom-fish-utils = { path = "../doom-fish-utils", version = ">=0.1, <0.3", optional = true }
 
 [dev-dependencies]
+pollster = "0.3"
 regex-lite = "0.1"
 
 [package.metadata.docs.rs]

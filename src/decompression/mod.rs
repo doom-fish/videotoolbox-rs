@@ -9,6 +9,10 @@ use core::ptr;
 use std::sync::{Arc, Mutex};
 
 use apple_cf::cf::{CFDictionary, CFType};
+#[cfg(feature = "async")]
+use doom_fish_utils::completion::{AsyncCompletion, SyncCompletionPtr};
+#[cfg(feature = "async")]
+use doom_fish_utils::panic_safe::catch_user_panic;
 
 use crate::error::VTError;
 use crate::ffi;
@@ -51,6 +55,9 @@ struct CallbackState {
     callback: Mutex<DecodeCallback>,
     multi_image_callback: Mutex<Option<MultiImageDecodeCallback>>,
 }
+
+#[cfg(feature = "async")]
+struct AsyncDecodeContext(SyncCompletionPtr);
 
 /// Hardware video decompression session.
 ///
@@ -206,6 +213,49 @@ impl DecompressionSession {
         } else {
             Err(VTError::EncoderCallback(status))
         }
+    }
+
+    /// Submit `sample_buffer` for decoding and await the decoded `CVImageBuffer`.
+    ///
+    /// This method requires the crate's `async` feature.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::EncoderCallback`] if the decoder rejects the frame,
+    /// reports an asynchronous failure, or completes without an image buffer.
+    #[cfg(feature = "async")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+    #[allow(clippy::future_not_send)]
+    pub async fn decode_frame_async(
+        &self,
+        sample_buffer: apple_cf::cm::CMSampleBuffer,
+        frame_flags: u32,
+    ) -> Result<apple_cf::cv::CVImageBuffer, VTError> {
+        let (future, completion) = AsyncCompletion::<apple_cf::cv::CVImageBuffer>::create();
+        let context = Box::into_raw(Box::new(AsyncDecodeContext(completion)));
+        let status = unsafe {
+            ffi::VTDecompressionSessionDecodeFrame(
+                self.session,
+                sample_buffer.as_ptr(),
+                frame_flags,
+                context.cast::<c_void>(),
+                ptr::null_mut(),
+            )
+        };
+        if status != 0 {
+            let context = unsafe { Box::from_raw(context) };
+            unsafe {
+                AsyncCompletion::<apple_cf::cv::CVImageBuffer>::complete_err(
+                    context.0,
+                    status.to_string(),
+                );
+            };
+            return Err(VTError::EncoderCallback(status));
+        }
+
+        future
+            .await
+            .map_err(|error| VTError::EncoderCallback(parse_async_status(&error)))
     }
 
     /// Install a callback that receives multi-image output when the decoder
@@ -434,15 +484,71 @@ impl DecompressionSession {
     }
 }
 
+#[cfg(feature = "async")]
+fn parse_async_status(error: &str) -> ffi::OSStatus {
+    error.parse().unwrap_or(-1)
+}
+
+#[cfg(feature = "async")]
+fn complete_async_decode(
+    source_frame_ref_con: *mut c_void,
+    status: ffi::OSStatus,
+    image_buffer: *mut c_void,
+) {
+    catch_user_panic("videotoolbox::decompression::decode_frame_async", || {
+        let context = unsafe { Box::from_raw(source_frame_ref_con.cast::<AsyncDecodeContext>()) };
+        if status != 0 {
+            unsafe {
+                AsyncCompletion::<apple_cf::cv::CVImageBuffer>::complete_err(
+                    context.0,
+                    status.to_string(),
+                );
+            };
+            return;
+        }
+
+        if image_buffer.is_null() {
+            unsafe {
+                AsyncCompletion::<apple_cf::cv::CVImageBuffer>::complete_err(
+                    context.0,
+                    "-1".into(),
+                );
+            };
+            return;
+        }
+
+        unsafe { ffi::CFRetain(image_buffer.cast_const()) };
+        let Some(image_buffer) = apple_cf::cv::CVImageBuffer::from_raw(image_buffer) else {
+            unsafe {
+                AsyncCompletion::<apple_cf::cv::CVImageBuffer>::complete_err(
+                    context.0,
+                    "-1".into(),
+                );
+            };
+            return;
+        };
+
+        unsafe {
+            AsyncCompletion::<apple_cf::cv::CVImageBuffer>::complete_ok(context.0, image_buffer);
+        };
+    });
+}
+
 unsafe extern "C" fn decode_trampoline(
     output_ref_con: *mut c_void,
-    _source_frame_ref_con: *mut c_void,
+    source_frame_ref_con: *mut c_void,
     status: ffi::OSStatus,
     info_flags: ffi::VTDecodeInfoFlags,
     image_buffer: *mut c_void,
     pts: ffi::CMTime,
     duration: ffi::CMTime,
 ) {
+    #[cfg(feature = "async")]
+    if !source_frame_ref_con.is_null() {
+        complete_async_decode(source_frame_ref_con, status, image_buffer);
+        return;
+    }
+
     if output_ref_con.is_null() {
         return;
     }

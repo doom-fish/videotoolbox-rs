@@ -1,14 +1,17 @@
 //! [`CompressionSession`] — hardware H.264/HEVC/ProRes encoder.
 
-use core::ffi::{c_char, c_void};
+use core::ffi::c_void;
 use core::ptr;
-use std::ffi::CString;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
 use apple_cf::cf::{CFDictionary, CFType};
 use apple_cf::cv::CVPixelBufferPool;
 use apple_cf::iosurface::IOSurface;
+#[cfg(feature = "async")]
+use doom_fish_utils::completion::{AsyncCompletion, SyncCompletionPtr};
+#[cfg(feature = "async")]
+use doom_fish_utils::panic_safe::catch_user_panic;
 
 use crate::error::VTError;
 use crate::ffi;
@@ -299,6 +302,9 @@ struct EncoderState {
     out_tx: Mutex<mpsc::Sender<Result<EncodedFrame, VTError>>>,
     out_rx: Mutex<mpsc::Receiver<Result<EncodedFrame, VTError>>>,
 }
+
+#[cfg(feature = "async")]
+struct AsyncEncodeContext(SyncCompletionPtr);
 
 impl CompressionSession {
     /// Convenience: start a builder.
@@ -616,6 +622,55 @@ impl CompressionSession {
         self.finish_encode(status)
     }
 
+    /// Submit `image_buffer` for encoding and await the encoded `CMSampleBuffer`.
+    ///
+    /// This method requires the crate's `async` feature.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::EncodeFailed`] if the frame submission is rejected or
+    /// [`VTError::EncoderCallback`] if the encoder callback reports a failure or
+    /// drops the frame without a `CMSampleBuffer`.
+    #[cfg(feature = "async")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+    #[allow(clippy::future_not_send)]
+    pub async fn encode_frame_async(
+        &self,
+        image_buffer: apple_cf::cv::CVPixelBuffer,
+        presentation_timestamp: apple_cf::cm::CMTime,
+        duration: apple_cf::cm::CMTime,
+        frame_properties: Option<CFDictionary>,
+    ) -> Result<apple_cf::cm::CMSampleBuffer, VTError> {
+        let (future, completion) = AsyncCompletion::<apple_cf::cm::CMSampleBuffer>::create();
+        let context = Box::into_raw(Box::new(AsyncEncodeContext(completion)));
+        let frame_properties_ref = frame_properties.as_ref();
+        let status = unsafe {
+            ffi::VTCompressionSessionEncodeFrame(
+                self.session,
+                image_buffer.as_ptr(),
+                presentation_timestamp,
+                duration,
+                frame_properties_ref.map_or(ptr::null(), |dict| dict.as_ptr().cast_const()),
+                context.cast::<c_void>(),
+                ptr::null_mut(),
+            )
+        };
+        if status != 0 {
+            let context = unsafe { Box::from_raw(context) };
+            unsafe {
+                AsyncCompletion::<apple_cf::cm::CMSampleBuffer>::complete_err(
+                    context.0,
+                    status.to_string(),
+                );
+            };
+            return Err(VTError::EncodeFailed(status));
+        }
+
+        future
+            .await
+            .map_err(|error| VTError::EncoderCallback(parse_async_status(&error)))
+    }
+
     /// Submit one multi-image frame (for example stereo MV-HEVC left/right eye
     /// images) and block until the encoder has emitted it.
     ///
@@ -821,13 +876,60 @@ impl core::fmt::Debug for CompressionSession {
 
 // ---- internal callback ----
 
+#[cfg(feature = "async")]
+fn parse_async_status(error: &str) -> ffi::OSStatus {
+    error.parse().unwrap_or(-1)
+}
+
+#[cfg(feature = "async")]
+fn complete_async_encode(
+    source_frame_ref_con: *mut c_void,
+    status: ffi::OSStatus,
+    sample_buffer: ffi::CMSampleBufferRef,
+) {
+    catch_user_panic("videotoolbox::compression::encode_frame_async", || {
+        let context = unsafe { Box::from_raw(source_frame_ref_con.cast::<AsyncEncodeContext>()) };
+        if status != 0 {
+            unsafe {
+                AsyncCompletion::<apple_cf::cm::CMSampleBuffer>::complete_err(
+                    context.0,
+                    status.to_string(),
+                );
+            };
+            return;
+        }
+
+        let Some(sample_buffer) =
+            (unsafe { apple_cf::cm::CMSampleBuffer::from_raw_retained(sample_buffer) })
+        else {
+            unsafe {
+                AsyncCompletion::<apple_cf::cm::CMSampleBuffer>::complete_err(
+                    context.0,
+                    "-1".into(),
+                );
+            };
+            return;
+        };
+
+        unsafe {
+            AsyncCompletion::<apple_cf::cm::CMSampleBuffer>::complete_ok(context.0, sample_buffer);
+        };
+    });
+}
+
 unsafe extern "C" fn encode_callback(
     output_callback_ref_con: *mut c_void,
-    _source_frame_ref_con: *mut c_void,
+    source_frame_ref_con: *mut c_void,
     status: ffi::OSStatus,
     info_flags: ffi::VTEncodeInfoFlags,
     sample_buffer: ffi::CMSampleBufferRef,
 ) {
+    #[cfg(feature = "async")]
+    if !source_frame_ref_con.is_null() {
+        complete_async_encode(source_frame_ref_con, status, sample_buffer);
+        return;
+    }
+
     // We borrow but do not consume the Arc — the session keeps it alive for
     // the lifetime of the encoder.
     let state_ptr = output_callback_ref_con.cast::<EncoderState>();
@@ -882,9 +984,3 @@ unsafe extern "C" fn encode_callback(
         .expect("encoder tx mutex poisoned");
     let _ = tx.send(result);
 }
-
-// CString import retained for future async API; suppress unused warning.
-#[allow(dead_code)]
-fn _retain_cstring(_: CString) {}
-#[allow(dead_code)]
-const fn _retain_c_char_ptr(_: *const c_char) {}

@@ -4,24 +4,39 @@
 //! per-frame parameter controls (macOS 15+).
 //!
 //! Session creation / parameter readback / parameter writeback /
-//! complete-frames all go through the pure-C FFI. Only the async
-//! `process(frame:)` call lives in the Swift bridge.
+//! complete-frames all go through the pure-C FFI. The Swift bridge wraps
+//! the async `process(frame:)` API for both blocking and future-based Rust
+//! entry points.
 
 use core::ffi::c_void;
 use core::ptr;
 use std::sync::Mutex;
 
 use apple_cf::{cf::CFType, cm::CMFormatDescription, cv::CVPixelBuffer};
+#[cfg(feature = "async")]
+use doom_fish_utils::completion::{AsyncCompletion, SyncCompletionPtr};
+#[cfg(feature = "async")]
+use doom_fish_utils::panic_safe::catch_user_panic;
 
 use crate::error::VTError;
 use crate::ffi;
 use crate::session;
+
+#[cfg(feature = "async")]
+type RawProcessFrameAsyncCallback = unsafe extern "C" fn(*mut c_void, i32, *mut c_void);
 
 extern "C" {
     fn vtb_raw_session_process_frame(
         session: *mut c_void,
         input_pixel_buffer: *mut c_void,
         out: *mut *mut c_void,
+    ) -> i32;
+    #[cfg(feature = "async")]
+    fn vtb_raw_session_process_frame_async(
+        session: *mut c_void,
+        input_pixel_buffer: *mut c_void,
+        refcon: *mut c_void,
+        callback: Option<RawProcessFrameAsyncCallback>,
     ) -> i32;
     fn vtb_raw_session_set_parameter_changed_handler(
         session: *mut c_void,
@@ -31,6 +46,9 @@ extern "C" {
 }
 
 type ParameterChangedCallback = Box<dyn FnMut(Vec<RawProcessingParameter>) + Send + 'static>;
+
+#[cfg(feature = "async")]
+struct AsyncRawProcessingContext(SyncCompletionPtr);
 
 /// `VTRAWProcessingSessionRef`.
 pub struct RawProcessingSession {
@@ -272,6 +290,43 @@ impl RawProcessingSession {
         CVPixelBuffer::from_raw(out.cast()).ok_or(VTError::EncodeFailed(0))
     }
 
+    /// Submit `input_pixel_buffer` for processing and await the processed output.
+    ///
+    /// This method requires the crate's `async` feature.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::EncodeFailed`] if the RAW processor rejects the frame
+    /// or completes without a processed `CVPixelBuffer`.
+    #[cfg(feature = "async")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+    pub async fn process_frame_async(
+        &self,
+        input_pixel_buffer: CVPixelBuffer,
+    ) -> Result<CVPixelBuffer, VTError> {
+        let (future, completion) = AsyncCompletion::<CVPixelBuffer>::create();
+        let context = Box::into_raw(Box::new(AsyncRawProcessingContext(completion)));
+        let status = unsafe {
+            vtb_raw_session_process_frame_async(
+                self.inner.cast(),
+                input_pixel_buffer.as_ptr().cast::<c_void>(),
+                context.cast::<c_void>(),
+                Some(raw_process_async_trampoline),
+            )
+        };
+        if status != 0 {
+            let context = unsafe { Box::from_raw(context) };
+            unsafe {
+                AsyncCompletion::<CVPixelBuffer>::complete_err(context.0, status.to_string());
+            };
+            return Err(VTError::EncodeFailed(status));
+        }
+
+        future
+            .await
+            .map_err(|error| VTError::EncodeFailed(parse_async_status(&error)))
+    }
+
     /// Raw `VTRAWProcessingSessionRef`.
     #[must_use]
     pub const fn as_ptr(&self) -> ffi::VTRAWProcessingSessionRef {
@@ -306,6 +361,39 @@ unsafe extern "C" fn raw_parameter_changed_trampoline(
         return;
     };
     callback(parameters_from_array(parameter_array));
+}
+
+#[cfg(feature = "async")]
+fn parse_async_status(error: &str) -> ffi::OSStatus {
+    error.parse().unwrap_or(-1)
+}
+
+#[cfg(feature = "async")]
+unsafe extern "C" fn raw_process_async_trampoline(
+    refcon: *mut c_void,
+    status: i32,
+    output_pixel_buffer: *mut c_void,
+) {
+    catch_user_panic("videotoolbox::raw_processing::process_frame_async", || {
+        let context = unsafe { Box::from_raw(refcon.cast::<AsyncRawProcessingContext>()) };
+        if status != 0 {
+            unsafe {
+                AsyncCompletion::<CVPixelBuffer>::complete_err(context.0, status.to_string());
+            };
+            return;
+        }
+
+        let Some(pixel_buffer) = CVPixelBuffer::from_raw(output_pixel_buffer.cast()) else {
+            unsafe {
+                AsyncCompletion::<CVPixelBuffer>::complete_err(context.0, "-1".into());
+            };
+            return;
+        };
+
+        unsafe {
+            AsyncCompletion::<CVPixelBuffer>::complete_ok(context.0, pixel_buffer);
+        };
+    });
 }
 
 /// A single RAW-processing parameter descriptor.

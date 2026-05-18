@@ -15,6 +15,11 @@ public typealias VTBRawParameterChangedCallback = @convention(c) (
     UnsafeMutableRawPointer?,
     CFArray?
 ) -> Void
+public typealias VTBRawProcessFrameAsyncCallback = @convention(c) (
+    UnsafeMutableRawPointer?,
+    Int32,
+    UnsafeMutableRawPointer?
+) -> Void
 
 typealias VTBRawParameterChangedHandler = @convention(block) (CFArray?) -> Void
 
@@ -25,7 +30,7 @@ private func vtb_raw_processing_session_set_parameter_changed_handler(
     _ parameterChangedHandler: VTBRawParameterChangedHandler?
 ) -> OSStatus
 
-/// Asynchronously process a single RAW frame, returning the
+/// Process a single RAW frame synchronously, returning the
 /// processed `CVPixelBuffer` (retained +1) via `out`.
 @_cdecl("vtb_raw_session_process_frame")
 public func vtb_raw_session_process_frame(
@@ -43,6 +48,34 @@ public func vtb_raw_session_process_frame(
                 out.pointee = vtb_retain(processed)
             }
         )
+    }
+    return VTB_NOT_SUPPORTED
+}
+
+/// Process a single RAW frame asynchronously, reporting the retained output
+/// pixel buffer through a C callback.
+@_cdecl("vtb_raw_session_process_frame_async")
+public func vtb_raw_session_process_frame_async(
+    _ session: UnsafeMutableRawPointer,
+    _ inputPixelBuffer: UnsafeMutableRawPointer,
+    _ refcon: UnsafeMutableRawPointer?,
+    _ callback: VTBRawProcessFrameAsyncCallback?
+) -> Int32 {
+    guard let callback else {
+        return -50
+    }
+    if #available(macOS 15.0, *) {
+        let s: VTRAWProcessingSession = vtb_borrow(session)
+        let pb: CVPixelBuffer = vtb_borrow(inputPixelBuffer)
+        Task {
+            do {
+                let processed = try await s.process(frame: pb)
+                callback(refcon, 0, vtb_retain(processed))
+            } catch {
+                callback(refcon, vtb_status(from: error), nil)
+            }
+        }
+        return 0
     }
     return VTB_NOT_SUPPORTED
 }
