@@ -68,7 +68,7 @@ impl FrameSilo {
     /// Returns [`VTError::EncodeFailed`] on `OSStatus` failure.
     pub fn add_sample_buffer(&self, sample: &CMSampleBuffer) -> Result<(), VTError> {
         let s = unsafe {
-            ffi::VTFrameSiloAddSampleBuffer(self.inner, sample.as_ptr().cast::<c_void>())
+            ffi::VTFrameSiloAddSampleBuffer(self.inner, sample.as_ptr().cast())
         };
         if s == 0 {
             Ok(())
@@ -237,7 +237,7 @@ unsafe extern "C" fn frame_silo_collect_sample_buffer(
     let Some(samples) = (unsafe { refcon.cast::<Vec<CMSampleBuffer>>().as_mut() }) else {
         return -1;
     };
-    let Some(sample) = apple_cf::cm::CMSampleBuffer::from_raw_retained(sample_buffer) else {
+    let Some(sample) = apple_cf::cm::CMSampleBuffer::from_raw_retained(sample_buffer.cast()) else {
         return -1;
     };
     samples.push(sample);

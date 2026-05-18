@@ -50,10 +50,11 @@ impl EncodedFrame {
     /// Returns `null` for dropped frames. Do **not** call `CFRelease` on
     /// the returned pointer — ownership stays with this `EncodedFrame`.
     #[must_use]
-    pub fn cm_sample_buffer_ptr(&self) -> *mut core::ffi::c_void {
-        self.sample_buffer
-            .as_ref()
-            .map_or(core::ptr::null_mut(), apple_cf::cm::CMSampleBuffer::as_ptr)
+    pub fn cm_sample_buffer_ptr(&self) -> ffi::CMSampleBufferRef {
+        self.sample_buffer.as_ref().map_or(
+            core::ptr::null_mut::<c_void>().cast(),
+            |sample_buffer| sample_buffer.as_ptr().cast(),
+        )
     }
 }
 
@@ -900,7 +901,7 @@ fn complete_async_encode(
         }
 
         let Some(sample_buffer) =
-            (unsafe { apple_cf::cm::CMSampleBuffer::from_raw_retained(sample_buffer) })
+            (unsafe { apple_cf::cm::CMSampleBuffer::from_raw_retained(sample_buffer.cast()) })
         else {
             unsafe {
                 AsyncCompletion::<apple_cf::cm::CMSampleBuffer>::complete_err(
@@ -967,7 +968,7 @@ unsafe extern "C" fn encode_callback(
                 // Wrap the CMSampleBuffer in a safe apple_cf type. The
                 // wrapper retains-on-take so the encoder's reference is
                 // unaffected.
-                let safe = apple_cf::cm::CMSampleBuffer::from_raw_retained(sample_buffer);
+                let safe = apple_cf::cm::CMSampleBuffer::from_raw_retained(sample_buffer.cast());
                 Ok(EncodedFrame {
                     data,
                     presentation_time: (pts.value, pts.timescale),

@@ -7,13 +7,11 @@
 
 #![allow(missing_docs, non_camel_case_types, non_upper_case_globals)]
 
-use core::ffi::{c_char, c_int, c_uint, c_void};
+use core::ffi::{c_char, c_uint, c_void};
 
 // ---- type aliases that match the C headers ----
 
 pub type OSStatus = i32;
-pub type CMVideoCodecType = u32;
-pub type CMTimeFlags = u32;
 
 pub use apple_cf::cm::{CMTime, CMTimeRange};
 
@@ -83,12 +81,12 @@ pub const kVTMotionEstimationInfoFlags_Reserved0: VTMotionEstimationInfoFlags = 
 
 pub use apple_cf::raw::{
     CFAllocatorRef, CFArrayRef, CFBooleanRef, CFDictionaryRef, CFMutableDictionaryRef,
-    CFNumberRef, CFStringRef, CFTypeRef, CFURLRef,
+    CFNumberRef, CFNumberType, CFStringRef, CFTypeRef, CFURLRef, CMBlockBufferRef,
+    CMFormatDescriptionRef, CMItemCount, CMSampleBufferRef, CMTaggedBufferGroupRef,
+    CMTimeFlags, CMVideoCodecType,
 };
 pub type VTExtensionPropertiesKey = CFStringRef;
 pub type VTHDRPerFrameMetadataGenerationHDRFormatType = CFStringRef;
-
-pub type CFNumberType = c_int;
 pub const kCFNumberSInt32Type: CFNumberType = 3;
 pub const kCFNumberFloat64Type: CFNumberType = 13;
 
@@ -148,11 +146,6 @@ extern "C" {
 
 // ---- CoreMedia: CMSampleBuffer ----
 
-pub type CMSampleBufferRef = *mut c_void;
-pub type CMBlockBufferRef = *mut c_void;
-pub type CMFormatDescriptionRef = *mut c_void;
-pub type CMTaggedBufferGroupRef = *mut c_void;
-pub type CMItemCount = isize;
 pub type Boolean = u8;
 
 extern "C" {

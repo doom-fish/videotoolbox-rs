@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.15.0] - 2026-05-18
+
+### Changed
+
+- Re-export `CMSampleBufferRef`, `CMBlockBufferRef`, `CMFormatDescriptionRef`, `CMTaggedBufferGroupRef`, `CMItemCount`, `CMVideoCodecType`, `CMTimeFlags`, and `CFNumberType` from `apple_cf::raw`, removing the remaining crate-local CoreMedia/CoreFoundation duplicate aliases.
+
 ## [0.14.0] - 2026-05-18
 
 ### Changed

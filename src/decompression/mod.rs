@@ -201,7 +201,7 @@ impl DecompressionSession {
         let status = unsafe {
             ffi::VTDecompressionSessionDecodeFrameWithOptions(
                 self.session,
-                sample_buffer.as_ptr(),
+                sample_buffer.as_ptr().cast(),
                 decode_flags,
                 frame_options.map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
                 ptr::null_mut(),
@@ -236,7 +236,7 @@ impl DecompressionSession {
         let status = unsafe {
             ffi::VTDecompressionSessionDecodeFrame(
                 self.session,
-                sample_buffer.as_ptr(),
+                sample_buffer.as_ptr().cast(),
                 frame_flags,
                 context.cast::<c_void>(),
                 ptr::null_mut(),
@@ -479,6 +479,7 @@ impl DecompressionSession {
     ///
     /// `format` must be a valid `CMFormatDescriptionRef` (typically
     /// obtained from another `CMSampleBuffer`).
+    #[must_use]
     pub unsafe fn can_accept_format(&self, format: ffi::CMFormatDescriptionRef) -> bool {
         ffi::VTDecompressionSessionCanAcceptFormatDescription(self.session, format)
     }

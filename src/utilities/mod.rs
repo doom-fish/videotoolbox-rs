@@ -57,7 +57,8 @@ pub fn copy_video_decoder_extension_properties(
     format: &CMFormatDescription,
 ) -> Result<CFDictionary, VTError> {
     let mut out: ffi::CFDictionaryRef = ptr::null();
-    let status = unsafe { ffi::VTCopyVideoDecoderExtensionProperties(format.as_ptr(), &mut out) };
+    let status =
+        unsafe { ffi::VTCopyVideoDecoderExtensionProperties(format.as_ptr().cast(), &mut out) };
     if status != 0 || out.is_null() {
         return Err(VTError::ApiFailed {
             api: "VTCopyVideoDecoderExtensionProperties",
@@ -81,7 +82,8 @@ pub fn copy_raw_processor_extension_properties(
     format: &CMFormatDescription,
 ) -> Result<CFDictionary, VTError> {
     let mut out: ffi::CFDictionaryRef = ptr::null();
-    let status = unsafe { ffi::VTCopyRAWProcessorExtensionProperties(format.as_ptr(), &mut out) };
+    let status =
+        unsafe { ffi::VTCopyRAWProcessorExtensionProperties(format.as_ptr().cast(), &mut out) };
     if status != 0 || out.is_null() {
         return Err(VTError::ApiFailed {
             api: "VTCopyRAWProcessorExtensionProperties",
