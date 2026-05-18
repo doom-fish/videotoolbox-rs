@@ -15,51 +15,7 @@ pub type OSStatus = i32;
 pub type CMVideoCodecType = u32;
 pub type CMTimeFlags = u32;
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-pub struct CMTime {
-    pub value: i64,
-    pub timescale: i32,
-    pub flags: CMTimeFlags,
-    pub epoch: i64,
-}
-
-impl CMTime {
-    pub const VALID: CMTimeFlags = 1;
-
-    /// Construct a `CMTime` from a numerator + denominator. e.g. `CMTime::new(1, 30)`
-    /// for 1/30s (one 30 fps frame).
-    #[must_use]
-    pub const fn new(value: i64, timescale: i32) -> Self {
-        Self {
-            value,
-            timescale,
-            flags: Self::VALID,
-            epoch: 0,
-        }
-    }
-
-    pub const INVALID: Self = Self {
-        value: 0,
-        timescale: 0,
-        flags: 0,
-        epoch: 0,
-    };
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-pub struct CMTimeRange {
-    pub start: CMTime,
-    pub duration: CMTime,
-}
-
-impl CMTimeRange {
-    pub const INVALID: Self = Self {
-        start: CMTime::INVALID,
-        duration: CMTime::INVALID,
-    };
-}
+pub use apple_cf::cm::{CMTime, CMTimeRange};
 
 // CMVideoCodecType FourCC codes (ASCII bytes).
 pub const kCMVideoCodecType_H264: CMVideoCodecType = u32::from_be_bytes(*b"avc1");

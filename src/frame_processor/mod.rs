@@ -1383,12 +1383,7 @@ fn default_super_resolution_configuration(
 }
 
 fn to_ffi_time(time: CMTime) -> ffi::CMTime {
-    ffi::CMTime {
-        value: time.value,
-        timescale: time.timescale,
-        flags: time.flags,
-        epoch: time.epoch,
-    }
+    time
 }
 
 fn frame_ptr(frame: Option<&FrameProcessorFrame>) -> *mut c_void {

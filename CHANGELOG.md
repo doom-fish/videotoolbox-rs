@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-05-18
+
+### Changed
+
+- `ffi::CMTime` and `ffi::CMTimeRange` now re-export `apple_cf::cm::{CMTime, CMTimeRange}` instead of defining crate-local duplicates. This is a breaking change for code that relied on the old nominally-distinct FFI types, but it removes cross-crate type mismatches when sharing Core Media time values.
+
 ## [0.11.4] - 2026-05-17
 
 ### Changed
