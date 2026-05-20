@@ -2,7 +2,7 @@
 
 Safe Rust bindings for Apple's [VideoToolbox](https://developer.apple.com/documentation/videotoolbox) framework — hardware-accelerated encode/decode, pixel transfer/rotation, multipass helpers, HDR metadata, motion estimation, RAW processing, and `VTFrameProcessor` pipelines on macOS.
 
-> **Status:** experimental, but the crate now covers the main public `VideoToolbox` surfaces used by the doom-fish stack. Objective-C-only APIs use a small Swift bridge behind the `frame_processor` feature, and executor-agnostic encode/decode futures live in `videotoolbox::async_api` behind the `async` feature.
+> **Status:** experimental, but the crate now covers the main public `VideoToolbox` surfaces used by the doom-fish stack. Objective-C-only APIs use a small Swift bridge behind the `frame_processor` feature, and executor-agnostic encode/decode/RAW-processing async helpers live in `videotoolbox::async_api` behind the `async` feature.
 
 ## Features
 
@@ -12,9 +12,14 @@ Safe Rust bindings for Apple's [VideoToolbox](https://developer.apple.com/docume
 - **Advanced processing** — `VTFrameProcessor`, `VTMotionEstimationSession`, `VTRAWProcessingSession`
 - **Direct `IOSurface` input/output** — zero-copy composition with [`apple-cf::iosurface`](https://github.com/doom-fish/apple-cf-rs)
 - **Builder pattern** — fluent encoder configuration for bitrate, frame rate, keyframe interval, real-time mode, and profile level
-- **Executor-agnostic async module** — `videotoolbox::async_api::{AsyncCompressionSession, AsyncDecompressionSession}` bridges one-shot frame callbacks to `Future`s via `doom-fish-utils::completion`
+- **Executor-agnostic async module** — `videotoolbox::async_api::{AsyncCompressionSession, AsyncDecompressionSession, AsyncRawProcessingSession}` bridges one-shot frame callbacks to `Future`s and wraps RAW-parameter change notifications as a bounded async stream via `doom-fish-utils`
 - **Mostly pure C bindings** — optional Swift bridge only for Objective-C-only APIs
 - **Minimal dependencies** — [`apple-cf`](https://github.com/doom-fish/apple-cf-rs), plus optional [`apple-metal`](https://github.com/doom-fish/apple-metal-rs) for `VTFrameProcessor` command-buffer integration
+
+### Async notes
+
+- `AsyncRawProcessingSession::parameter_changes(...)` exposes `VTRAWProcessingSessionSetParameterChangedHandler` as a bounded async stream.
+- `VTDecompressionSessionSetMultiImageCallback` remains sync-only for now: the audited C API requires a non-null callback and exposes no clear / unsubscribe hook for an RAII async stream wrapper.
 
 ## Why not bindgen?
 
@@ -87,7 +92,7 @@ screencapturekit-rs ──► IOSurface ──► videotoolbox-rs ──► H.26
 - [x] `VTProfessionalVideoWorkflow` decoder/encoder registration
 - [x] `VTCreateCGImageFromCVPixelBuffer`
 - [x] HEVC profile-level helpers
-- [x] Executor-agnostic async encode/decode module behind the `async` feature
+- [x] Executor-agnostic async encode/decode/RAW-processing module behind the `async` feature
 
 ## License
 

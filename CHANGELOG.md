@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.18.0] - 2026-05-20
+
+### Added
+
+- `AsyncRawProcessingSession` in `videotoolbox::async_api`, mirroring async RAW frame processing and exposing `parameter_changes(...)` as a bounded async stream over `VTRAWProcessingSessionSetParameterChangedHandler`.
+
+### Notes
+
+- Phase 32 completeness + async sweep.
+- `VTDecompressionSessionSetMultiImageCallback` remains deferred because the audited C signature requires a non-null callback and does not expose a clear/unsubscribe path for RAII stream teardown.
+
 ## [0.17.1] - 2026-05-20
 
 - Added in-`src/` unit tests across `compression`, `error`, `session`, and `transfer` (Tier 2 quality polish), providing fast `cargo test --lib` fail-fast signal alongside the existing integration tests under `tests/`.

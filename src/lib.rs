@@ -12,7 +12,8 @@
 //! framework. Objective-C-only APIs (notably `VTFrameProcessor`,
 //! `VTMotionEstimationSession`, and `VTRAWProcessingSession`) use a small Swift
 //! bridge behind the `frame_processor` feature, while executor-agnostic
-//! encode/decode futures live in [`async_api`] behind the `async` feature.
+//! encode/decode/RAW-processing async helpers live in [`async_api`] behind the
+//! `async` feature.
 //!
 //! # Quick start
 //!
