@@ -544,6 +544,8 @@ unsafe extern "C" fn decode_trampoline(
     pts: ffi::CMTime,
     duration: ffi::CMTime,
 ) {
+    #[cfg(not(feature = "async"))]
+    let _ = source_frame_ref_con;
     #[cfg(feature = "async")]
     if !source_frame_ref_con.is_null() {
         complete_async_decode(source_frame_ref_con, status, image_buffer);

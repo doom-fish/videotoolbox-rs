@@ -926,6 +926,8 @@ unsafe extern "C" fn encode_callback(
     info_flags: ffi::VTEncodeInfoFlags,
     sample_buffer: ffi::CMSampleBufferRef,
 ) {
+    #[cfg(not(feature = "async"))]
+    let _ = source_frame_ref_con;
     #[cfg(feature = "async")]
     if !source_frame_ref_con.is_null() {
         complete_async_encode(source_frame_ref_con, status, sample_buffer);
