@@ -21,11 +21,7 @@ pub fn create_cg_image_from_pixel_buffer(
 ) -> Result<*mut c_void, VTError> {
     let mut img: *mut c_void = ptr::null_mut();
     let s = unsafe {
-        ffi::VTCreateCGImageFromCVPixelBuffer(
-            pixel_buffer.as_ptr().cast(),
-            ptr::null(),
-            &mut img,
-        )
+        ffi::VTCreateCGImageFromCVPixelBuffer(pixel_buffer.as_ptr().cast(), ptr::null(), &mut img)
     };
     if s != 0 || img.is_null() {
         return Err(VTError::EncodeFailed(s));

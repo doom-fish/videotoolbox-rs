@@ -513,8 +513,9 @@ impl RawProcessingParameter {
             return None;
         }
         let mut out: f64 = 0.0;
-        let ok =
-            unsafe { ffi::CFNumberGetValue(v.cast(), ffi::kCFNumberFloat64Type, (&raw mut out).cast()) };
+        let ok = unsafe {
+            ffi::CFNumberGetValue(v.cast(), ffi::kCFNumberFloat64Type, (&raw mut out).cast())
+        };
         if ok {
             Some(out)
         } else {

@@ -51,10 +51,11 @@ impl EncodedFrame {
     /// the returned pointer — ownership stays with this `EncodedFrame`.
     #[must_use]
     pub fn cm_sample_buffer_ptr(&self) -> ffi::CMSampleBufferRef {
-        self.sample_buffer.as_ref().map_or(
-            core::ptr::null_mut::<c_void>().cast(),
-            |sample_buffer| sample_buffer.as_ptr().cast(),
-        )
+        self.sample_buffer
+            .as_ref()
+            .map_or(core::ptr::null_mut::<c_void>().cast(), |sample_buffer| {
+                sample_buffer.as_ptr().cast()
+            })
     }
 }
 

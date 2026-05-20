@@ -185,8 +185,8 @@ pub fn supported_property_dictionary_for_encoder(
         return Err(status);
     }
 
-    let encoder_id = CFString::from_raw(encoder_id_out.cast_mut().cast())
-        .map(|string| string.to_string_lossy());
+    let encoder_id =
+        CFString::from_raw(encoder_id_out.cast_mut().cast()).map(|string| string.to_string_lossy());
     let supported_properties = CFDictionary::from_raw(supported_properties_out.cast_mut().cast());
 
     Ok(EncoderSupportedProperties {

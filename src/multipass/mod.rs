@@ -67,9 +67,7 @@ impl FrameSilo {
     ///
     /// Returns [`VTError::EncodeFailed`] on `OSStatus` failure.
     pub fn add_sample_buffer(&self, sample: &CMSampleBuffer) -> Result<(), VTError> {
-        let s = unsafe {
-            ffi::VTFrameSiloAddSampleBuffer(self.inner, sample.as_ptr().cast())
-        };
+        let s = unsafe { ffi::VTFrameSiloAddSampleBuffer(self.inner, sample.as_ptr().cast()) };
         if s == 0 {
             Ok(())
         } else {
