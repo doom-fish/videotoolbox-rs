@@ -123,3 +123,62 @@ pub(crate) unsafe fn set_properties(
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::Codec;
+    use crate::ffi;
+
+    #[test]
+    fn h264_and_hevc_codecs_match_expected_fourcc_values() {
+        assert_eq!(Codec::H264.as_cm_codec_type(), u32::from_be_bytes(*b"avc1"));
+        assert_eq!(Codec::H264.as_cm_codec_type(), ffi::kCMVideoCodecType_H264);
+        assert_eq!(Codec::HEVC.as_cm_codec_type(), u32::from_be_bytes(*b"hvc1"));
+        assert_eq!(Codec::HEVC.as_cm_codec_type(), ffi::kCMVideoCodecType_HEVC);
+    }
+
+    #[test]
+    fn prores_family_codecs_match_expected_fourcc_values() {
+        assert_eq!(
+            Codec::ProRes422.as_cm_codec_type(),
+            u32::from_be_bytes(*b"apcn")
+        );
+        assert_eq!(
+            Codec::ProRes422HQ.as_cm_codec_type(),
+            u32::from_be_bytes(*b"apch")
+        );
+        assert_eq!(
+            Codec::ProRes422LT.as_cm_codec_type(),
+            u32::from_be_bytes(*b"apcs")
+        );
+        assert_eq!(
+            Codec::ProRes422Proxy.as_cm_codec_type(),
+            u32::from_be_bytes(*b"apco")
+        );
+        assert_eq!(
+            Codec::ProRes4444.as_cm_codec_type(),
+            u32::from_be_bytes(*b"ap4h")
+        );
+    }
+
+    #[test]
+    fn codec_mappings_are_unique_across_variants() {
+        let codecs = [
+            Codec::H264,
+            Codec::HEVC,
+            Codec::ProRes422,
+            Codec::ProRes422HQ,
+            Codec::ProRes422LT,
+            Codec::ProRes422Proxy,
+            Codec::ProRes4444,
+        ];
+        let mut seen = HashSet::new();
+
+        for codec in codecs {
+            assert!(seen.insert(codec.as_cm_codec_type()));
+        }
+        assert_eq!(seen.len(), 7);
+    }
+}

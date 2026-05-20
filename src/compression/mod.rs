@@ -988,3 +988,115 @@ unsafe extern "C" fn encode_callback(
         .expect("encoder tx mutex poisoned");
     let _ = tx.send(result);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{CompressionSessionBuilder, EncodedFrame, ProfileLevel};
+    use crate::{error::VTError, ffi, session::Codec};
+
+    #[test]
+    fn builder_new_starts_with_expected_defaults() {
+        let builder = CompressionSessionBuilder::new(1920, 1080, Codec::H264);
+
+        assert_eq!(builder.width, 1920);
+        assert_eq!(builder.height, 1080);
+        assert_eq!(builder.codec, Codec::H264);
+        assert_eq!(builder.real_time, None);
+        assert_eq!(builder.allow_frame_reordering, None);
+        assert_eq!(builder.average_bit_rate, None);
+        assert_eq!(builder.expected_frame_rate, None);
+        assert_eq!(builder.max_keyframe_interval, None);
+        assert_eq!(builder.quality, None);
+        assert_eq!(builder.profile_level, None);
+    }
+
+    #[test]
+    fn builder_chain_records_requested_settings() {
+        let builder = CompressionSessionBuilder::new(3840, 2160, Codec::HEVC)
+            .with_real_time(true)
+            .with_allow_frame_reordering(false)
+            .with_average_bit_rate(24_000_000)
+            .with_expected_frame_rate(59.94)
+            .with_max_keyframe_interval(120)
+            .with_quality(0.75)
+            .with_profile_level(ProfileLevel::HEVCMain10AutoLevel);
+
+        assert_eq!(builder.width, 3840);
+        assert_eq!(builder.height, 2160);
+        assert_eq!(builder.codec, Codec::HEVC);
+        assert_eq!(builder.real_time, Some(true));
+        assert_eq!(builder.allow_frame_reordering, Some(false));
+        assert_eq!(builder.average_bit_rate, Some(24_000_000));
+        assert!(
+            (builder
+                .expected_frame_rate
+                .expect("expected frame rate should be set")
+                - 59.94)
+                .abs()
+                < 1.0e-9
+        );
+        assert_eq!(builder.max_keyframe_interval, Some(120));
+        assert!(
+            (builder.quality.expect("quality should be set") - 0.75).abs() < f32::EPSILON
+        );
+        assert_eq!(builder.profile_level, Some(ProfileLevel::HEVCMain10AutoLevel));
+    }
+
+    #[test]
+    fn build_rejects_non_positive_dimensions_before_entering_ffi() {
+        let error = CompressionSessionBuilder::new(0, 1080, Codec::H264)
+            .build()
+            .expect_err("zero width must fail before session creation");
+
+        assert_eq!(
+            error,
+            VTError::InvalidArgument("width/height must be positive (got 0x1080)".to_owned())
+        );
+    }
+
+    #[test]
+    fn encoded_frame_accessors_handle_missing_sample_buffer() {
+        let frame = EncodedFrame {
+            data: vec![1, 2, 3],
+            presentation_time: (10, 30),
+            info_flags: 7,
+            sample_buffer: None,
+        };
+        let cloned = frame.clone();
+        let debug = format!("{cloned:?}");
+
+        assert!(frame.cm_sample_buffer().is_none());
+        assert!(frame.cm_sample_buffer_ptr().is_null());
+        assert_eq!(cloned.data, vec![1, 2, 3]);
+        assert_eq!(cloned.presentation_time, (10, 30));
+        assert_eq!(cloned.info_flags, 7);
+        assert!(debug.contains("EncodedFrame"));
+        assert!(debug.contains("presentation_time"));
+    }
+
+    #[test]
+    fn profile_level_maps_to_expected_cfstring_constants() {
+        assert_eq!(
+            ProfileLevel::H264HighAutoLevel.as_cf_string(),
+            unsafe { ffi::kVTProfileLevel_H264_High_AutoLevel }
+        );
+        assert_eq!(
+            ProfileLevel::HEVCMain10AutoLevel.as_cf_string(),
+            unsafe { ffi::kVTProfileLevel_HEVC_Main10_AutoLevel }
+        );
+    }
+
+    #[test]
+    fn compression_property_keys_are_non_null_and_distinct() {
+        let real_time = unsafe { ffi::kVTCompressionPropertyKey_RealTime };
+        let profile_level = unsafe { ffi::kVTCompressionPropertyKey_ProfileLevel };
+        let quality = unsafe { ffi::kVTCompressionPropertyKey_Quality };
+
+        assert!(!real_time.is_null());
+        assert!(!profile_level.is_null());
+        assert!(!quality.is_null());
+        assert_ne!(real_time, profile_level);
+        assert_ne!(real_time, quality);
+        assert_ne!(profile_level, quality);
+    }
+}

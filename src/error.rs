@@ -72,3 +72,74 @@ impl fmt::Display for VTError {
 }
 
 impl std::error::Error for VTError {}
+
+#[cfg(test)]
+mod tests {
+    use super::VTError;
+
+    #[test]
+    fn status_returns_underlying_osstatus_when_available() {
+        assert_eq!(VTError::SessionCreateFailed(-12903).status(), Some(-12903));
+        assert_eq!(
+            VTError::SetPropertyFailed {
+                key: "RealTime".to_owned(),
+                status: -50,
+            }
+            .status(),
+            Some(-50)
+        );
+        assert_eq!(
+            VTError::ApiFailed {
+                api: "VTSessionCopyProperty",
+                status: -7,
+            }
+            .status(),
+            Some(-7)
+        );
+    }
+
+    #[test]
+    fn status_returns_none_for_non_osstatus_variants() {
+        assert_eq!(VTError::PixelBufferCreateFailed(-666).status(), None);
+        assert_eq!(
+            VTError::InvalidArgument("width must be positive".to_owned()).status(),
+            None
+        );
+    }
+
+    #[test]
+    fn display_formats_property_and_api_failures() {
+        assert_eq!(
+            VTError::SetPropertyFailed {
+                key: "ProfileLevel".to_owned(),
+                status: -12902,
+            }
+            .to_string(),
+            "VTSessionSetProperty(\"ProfileLevel\") failed: -12902"
+        );
+        assert_eq!(
+            VTError::ApiFailed {
+                api: "VTSessionCopyProperty",
+                status: -7,
+            }
+            .to_string(),
+            "VTSessionCopyProperty failed: -7"
+        );
+    }
+
+    #[test]
+    fn display_formats_argument_and_pixel_buffer_failures() {
+        assert_eq!(
+            VTError::InvalidArgument("zero width".to_owned()).to_string(),
+            "invalid argument: zero width"
+        );
+        assert_eq!(
+            VTError::PixelBufferCreateFailed(-666).to_string(),
+            "CVPixelBufferCreateWithIOSurface failed: -666"
+        );
+        assert_eq!(
+            VTError::EncoderCallback(-8971).to_string(),
+            "encoder callback reported status -8971"
+        );
+    }
+}
