@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0] - 2026-05-20
+
+### Added
+
+- `async_api` module behind the `async` feature, providing executor-agnostic async/await wrappers for callback-based VideoToolbox APIs (compression/decompression frame callbacks). Uses `doom-fish-utils::completion` so callers can use any executor (tokio, async-std, pollster, etc.).
+- New example showing the async encode flow.
+
 ## [0.16.3] - 2026-05-20
 
 - Clippy hygiene sweep: cleared all `-D warnings` lints across the crate. No public API change.

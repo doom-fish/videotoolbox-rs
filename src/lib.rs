@@ -9,9 +9,10 @@
 //! framework — hardware-accelerated H.264, HEVC, and `ProRes` codecs on macOS.
 //!
 //! Most of the crate uses direct `extern "C"` bindings against the system
-//! framework. Objective-C-only / async APIs (notably `VTFrameProcessor`,
+//! framework. Objective-C-only APIs (notably `VTFrameProcessor`,
 //! `VTMotionEstimationSession`, and `VTRAWProcessingSession`) use a small Swift
-//! bridge behind the `frame_processor` feature.
+//! bridge behind the `frame_processor` feature, while executor-agnostic
+//! encode/decode futures live in [`async_api`] behind the `async` feature.
 //!
 //! # Quick start
 //!
@@ -41,6 +42,10 @@ pub mod error;
 pub mod ffi;
 pub mod session;
 pub mod tagged_buffer_group;
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+pub mod async_api;
 
 #[cfg(feature = "compression")]
 #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]

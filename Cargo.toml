@@ -1,6 +1,6 @@
 [package]
 name = "videotoolbox"
-version = "0.16.3"
+version = "0.17.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/doom-fish/videotoolbox-rs"
@@ -75,6 +75,10 @@ required-features = ["compression"]
 [[example]]
 name = "02_encode_sequence"
 required-features = ["compression"]
+
+[[example]]
+name = "03_async_encode"
+required-features = ["compression", "async"]
 
 [profile.release]
 debug = "full"
