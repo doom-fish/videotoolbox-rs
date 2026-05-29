@@ -22,14 +22,7 @@ pub struct FrameSilo {
 unsafe impl Send for FrameSilo {}
 unsafe impl Sync for FrameSilo {}
 
-impl Drop for FrameSilo {
-    fn drop(&mut self) {
-        if !self.inner.is_null() {
-            unsafe { ffi::CFRelease(self.inner.cast()) };
-            self.inner = ptr::null_mut();
-        }
-    }
-}
+crate::utils::retained::vt_retained!(FrameSilo, field = inner, release = ffi::CFRelease);
 
 impl FrameSilo {
     /// CoreFoundation type identifier for `VTFrameSilo`.
@@ -161,17 +154,12 @@ pub struct MultiPassStorage {
 unsafe impl Send for MultiPassStorage {}
 unsafe impl Sync for MultiPassStorage {}
 
-impl Drop for MultiPassStorage {
-    fn drop(&mut self) {
-        if !self.inner.is_null() {
-            unsafe {
-                let _ = ffi::VTMultiPassStorageClose(self.inner);
-                ffi::CFRelease(self.inner.cast());
-            }
-            self.inner = ptr::null_mut();
-        }
-    }
-}
+crate::utils::retained::vt_retained!(
+    MultiPassStorage,
+    field = inner,
+    invalidate = ffi::VTMultiPassStorageClose,
+    release = ffi::CFRelease,
+);
 
 impl MultiPassStorage {
     /// CoreFoundation type identifier for `VTMultiPassStorage`.

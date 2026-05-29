@@ -4,8 +4,6 @@
 //! buffer groups that bundle multiple pixel or sample buffers into one logical
 //! frame (for example stereo MV-HEVC left/right eye images).
 
-use core::ptr;
-
 use apple_cf::cm::CMSampleBuffer;
 use apple_cf::cv::CVPixelBuffer;
 
@@ -102,14 +100,7 @@ impl Clone for TaggedBufferGroup {
     }
 }
 
-impl Drop for TaggedBufferGroup {
-    fn drop(&mut self) {
-        if !self.inner.is_null() {
-            unsafe { ffi::CFRelease(self.inner.cast()) };
-            self.inner = ptr::null_mut();
-        }
-    }
-}
+crate::utils::retained::vt_retained!(TaggedBufferGroup, field = inner, release = ffi::CFRelease);
 
 impl core::fmt::Debug for TaggedBufferGroup {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

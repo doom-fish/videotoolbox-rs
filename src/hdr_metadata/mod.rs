@@ -35,14 +35,7 @@ pub struct HdrMetadataSession {
 unsafe impl Send for HdrMetadataSession {}
 unsafe impl Sync for HdrMetadataSession {}
 
-impl Drop for HdrMetadataSession {
-    fn drop(&mut self) {
-        if !self.inner.is_null() {
-            unsafe { ffi::CFRelease(self.inner.cast()) };
-            self.inner = ptr::null_mut();
-        }
-    }
-}
+crate::utils::retained::vt_retained!(HdrMetadataSession, field = inner, release = ffi::CFRelease);
 
 impl HdrMetadataSession {
     /// CoreFoundation type identifier for `VTHDRPerFrameMetadataGenerationSession`.

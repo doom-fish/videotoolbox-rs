@@ -355,10 +355,17 @@ unsafe extern "C" fn raw_parameter_changed_trampoline(
     refcon: *mut c_void,
     parameter_array: ffi::CFArrayRef,
 ) {
-    let Some(callback) = (unsafe { refcon.cast::<ParameterChangedCallback>().as_mut() }) else {
-        return;
-    };
-    callback(parameters_from_array(parameter_array));
+    // The user-supplied closure may panic. Unwinding across this `extern "C"`
+    // boundary back into VideoToolbox is undefined behaviour, so the
+    // invocation is wrapped in `catch_unwind`. `AssertUnwindSafe` is required
+    // because the captured `&mut` callback is not `UnwindSafe`; the user owns
+    // their own state consistency on panic.
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let Some(callback) = (unsafe { refcon.cast::<ParameterChangedCallback>().as_mut() }) else {
+            return;
+        };
+        callback(parameters_from_array(parameter_array));
+    }));
 }
 
 #[cfg(feature = "async")]
@@ -404,14 +411,11 @@ pub struct RawProcessingParameter {
 unsafe impl Send for RawProcessingParameter {}
 unsafe impl Sync for RawProcessingParameter {}
 
-impl Drop for RawProcessingParameter {
-    fn drop(&mut self) {
-        if !self.dict.is_null() {
-            unsafe { ffi::CFRelease(self.dict.cast()) };
-            self.dict = ptr::null();
-        }
-    }
-}
+crate::utils::retained::vt_retained!(
+    RawProcessingParameter,
+    field = dict,
+    release = ffi::CFRelease
+);
 
 impl RawProcessingParameter {
     /// Raw `CFDictionaryRef`.

@@ -49,17 +49,12 @@ pub struct MotionEstimationSession {
 unsafe impl Send for MotionEstimationSession {}
 unsafe impl Sync for MotionEstimationSession {}
 
-impl Drop for MotionEstimationSession {
-    fn drop(&mut self) {
-        if !self.inner.is_null() {
-            unsafe {
-                ffi::VTMotionEstimationSessionInvalidate(self.inner);
-                ffi::CFRelease(self.inner.cast());
-            }
-            self.inner = ptr::null_mut();
-        }
-    }
-}
+crate::utils::retained::vt_retained!(
+    MotionEstimationSession,
+    field = inner,
+    invalidate = ffi::VTMotionEstimationSessionInvalidate,
+    release = ffi::CFRelease,
+);
 
 impl MotionEstimationSession {
     /// CoreFoundation type identifier for `VTMotionEstimationSession`.

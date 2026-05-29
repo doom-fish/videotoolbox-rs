@@ -78,20 +78,12 @@ pub struct DecompressionSession {
 unsafe impl Send for DecompressionSession {}
 unsafe impl Sync for DecompressionSession {}
 
-impl Drop for DecompressionSession {
-    fn drop(&mut self) {
-        if !self.session.is_null() {
-            // SAFETY: `VTDecompressionSessionInvalidate` and `CFRelease` are standard Apple
-            // SDK functions. The session pointer is valid (checked for null). We own the
-            // session reference and are releasing it correctly.
-            unsafe {
-                ffi::VTDecompressionSessionInvalidate(self.session);
-                ffi::CFRelease(self.session.cast_const());
-            }
-            self.session = ptr::null_mut();
-        }
-    }
-}
+crate::utils::retained::vt_retained!(
+    DecompressionSession,
+    field = session,
+    invalidate = ffi::VTDecompressionSessionInvalidate,
+    release = ffi::CFRelease,
+);
 
 impl DecompressionSession {
     /// CoreFoundation type identifier for `VTDecompressionSession`.

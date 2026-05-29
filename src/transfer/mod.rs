@@ -92,17 +92,12 @@ pub struct PixelTransferSession {
 unsafe impl Send for PixelTransferSession {}
 unsafe impl Sync for PixelTransferSession {}
 
-impl Drop for PixelTransferSession {
-    fn drop(&mut self) {
-        if !self.session.is_null() {
-            unsafe {
-                ffi::VTPixelTransferSessionInvalidate(self.session);
-                ffi::CFRelease(self.session.cast());
-            }
-            self.session = ptr::null_mut();
-        }
-    }
-}
+crate::utils::retained::vt_retained!(
+    PixelTransferSession,
+    field = session,
+    invalidate = ffi::VTPixelTransferSessionInvalidate,
+    release = ffi::CFRelease,
+);
 
 impl PixelTransferSession {
     /// CoreFoundation type identifier for `VTPixelTransferSession`.
@@ -268,17 +263,12 @@ pub struct PixelRotationSession {
 unsafe impl Send for PixelRotationSession {}
 unsafe impl Sync for PixelRotationSession {}
 
-impl Drop for PixelRotationSession {
-    fn drop(&mut self) {
-        if !self.session.is_null() {
-            unsafe {
-                ffi::VTPixelRotationSessionInvalidate(self.session);
-                ffi::CFRelease(self.session.cast());
-            }
-            self.session = ptr::null_mut();
-        }
-    }
-}
+crate::utils::retained::vt_retained!(
+    PixelRotationSession,
+    field = session,
+    invalidate = ffi::VTPixelRotationSessionInvalidate,
+    release = ffi::CFRelease,
+);
 
 impl PixelRotationSession {
     /// CoreFoundation type identifier for `VTPixelRotationSession`.

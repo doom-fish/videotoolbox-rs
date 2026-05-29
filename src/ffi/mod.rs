@@ -918,6 +918,42 @@ pub struct VTDecompressionOutputCallbackRecord {
     pub decompression_output_ref_con: *mut c_void,
 }
 
+// ---- ABI layout assertions ----
+//
+// `VTDecompressionOutputCallbackRecord` is passed by value into
+// `VTDecompressionSessionCreate`. Its layout must match VideoToolbox's
+// C `VTDecompressionOutputCallbackRecord` exactly: a function pointer
+// followed by a `void *`, i.e. two pointer-sized fields.
+//
+// The crate MSRV (1.76) predates stable `offset_of!` (1.77), so field
+// offsets are pinned indirectly via `size_of`/`align_of` rather than
+// `offset_of!`. These compile-time asserts catch accidental field
+// reordering or type changes at build time; `vt_verify_ffi_layout` and
+// `tests/ffi_layout_tests.rs` guard the same invariant at run time.
+const _: () = assert!(
+    core::mem::size_of::<VTDecompressionOutputCallbackRecord>()
+        == 2 * core::mem::size_of::<*mut c_void>()
+);
+const _: () = assert!(
+    core::mem::align_of::<VTDecompressionOutputCallbackRecord>()
+        == core::mem::align_of::<*mut c_void>()
+);
+
+/// Verify, at run time, that the `#[repr(C)]` FFI structs shared with the
+/// C `VideoToolbox` ABI have the size and alignment the bindings expect.
+///
+/// Returns `true` when every checked struct matches its pinned layout. A
+/// `false` return means the Rust binding layout has drifted from the C ABI,
+/// which is a real ABI bug. Verified by `tests/ffi_layout_tests.rs`.
+#[must_use]
+pub const fn vt_verify_ffi_layout() -> bool {
+    let ptr = core::mem::size_of::<*mut c_void>();
+    let ptr_align = core::mem::align_of::<*mut c_void>();
+
+    core::mem::size_of::<VTDecompressionOutputCallbackRecord>() == 2 * ptr
+        && core::mem::align_of::<VTDecompressionOutputCallbackRecord>() == ptr_align
+}
+
 // Suppress unused variant warnings on c_uint placeholder types.
 const _: () = {
     let _ = core::mem::size_of::<c_uint>();

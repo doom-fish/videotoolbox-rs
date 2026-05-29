@@ -44,6 +44,8 @@ pub mod ffi;
 pub mod session;
 pub mod tagged_buffer_group;
 
+pub(crate) mod utils;
+
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub mod async_api;
