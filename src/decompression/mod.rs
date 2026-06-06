@@ -8,7 +8,7 @@ use core::ffi::c_void;
 use core::ptr;
 use std::sync::{Arc, Mutex};
 
-use apple_cf::cf::{CFDictionary, CFType};
+use apple_cf::cf::{AsCFType, CFDictionary, CFType};
 #[cfg(feature = "async")]
 use doom_fish_utils::completion::{AsyncCompletion, SyncCompletionPtr};
 #[cfg(feature = "async")]
@@ -128,6 +128,31 @@ impl DecompressionSession {
     where
         F: FnMut(DecodedFrame) + Send + 'static,
     {
+        Self::new_with_image_buffer_attributes(format_description, None, callback)
+    }
+
+    /// Like [`new`](Self::new) but lets you specify the decoder's destination
+    /// image-buffer attributes (the `destinationImageBufferAttributes` argument
+    /// to `VTDecompressionSessionCreate`).
+    ///
+    /// Use this to force the output pixel format (for example a `420f`
+    /// full-range NV12 buffer required by some renderers) or to require
+    /// IOSurface backing for zero-copy GPU interop, by passing a dictionary
+    /// keyed on `kCVPixelBufferPixelFormatTypeKey` /
+    /// `kCVPixelBufferIOSurfacePropertiesKey`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::EncoderCallback`] wrapping the raw `OSStatus`
+    /// if `VTDecompressionSessionCreate` fails.
+    pub fn new_with_image_buffer_attributes<F>(
+        format_description: &apple_cf::cm::CMFormatDescription,
+        image_buffer_attributes: Option<&CFDictionary>,
+        callback: F,
+    ) -> Result<Self, VTError>
+    where
+        F: FnMut(DecodedFrame) + Send + 'static,
+    {
         let state = Arc::new(CallbackState {
             callback: Mutex::new(Box::new(callback)),
             multi_image_callback: Mutex::new(None),
@@ -148,7 +173,7 @@ impl DecompressionSession {
                 ffi::kCFAllocatorDefault,
                 format_description.as_ptr().cast(),
                 ptr::null(),
-                ptr::null(),
+                image_buffer_attributes.map_or(ptr::null(), |d| AsCFType::as_ptr(d).cast()),
                 &record,
                 &mut session,
             )
@@ -572,7 +597,11 @@ unsafe extern "C" fn decode_trampoline(
     let Ok(mut guard) = state_clone.callback.lock() else {
         return;
     };
-    guard(frame);
+    // The user closure may panic. Unwinding across this `extern "C"` boundary
+    // back into VideoToolbox is undefined behaviour, so guard the invocation.
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        guard(frame);
+    }));
 }
 
 unsafe extern "C" fn decode_multi_image_trampoline(
@@ -605,5 +634,9 @@ unsafe extern "C" fn decode_multi_image_trampoline(
     let Some(callback) = guard.as_mut() else {
         return;
     };
-    callback(frame);
+    // The user closure may panic; unwinding across this `extern "C"` boundary
+    // back into VideoToolbox is undefined behaviour, so guard the invocation.
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        callback(frame);
+    }));
 }

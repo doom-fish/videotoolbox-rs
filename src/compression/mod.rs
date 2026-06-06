@@ -982,11 +982,10 @@ unsafe extern "C" fn encode_callback(
         }
     };
 
-    let tx = state_clone
-        .out_tx
-        .lock()
-        .expect("encoder tx mutex poisoned");
-    let _ = tx.send(result);
+    // Avoid panicking across the FFI boundary if the mutex is poisoned.
+    if let Ok(tx) = state_clone.out_tx.lock() {
+        let _ = tx.send(result);
+    };
 }
 
 #[cfg(test)]
