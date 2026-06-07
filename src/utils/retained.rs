@@ -62,6 +62,29 @@ macro_rules! vt_retained {
             }
         }
     };
+
+    // Drop with a drain step (e.g. wait-for-async-callbacks) BEFORE invalidate.
+    //
+    // For sessions that dispatch their output callback asynchronously (the
+    // VideoToolbox hardware decode/encode path does this even when async mode
+    // is not explicitly requested), invalidating + releasing the session while
+    // a callback is still in flight frees the callback ref-con out from under
+    // the running callback → use-after-free. Draining first
+    // (`VT*SessionWaitForAsynchronousFrames`) blocks until every queued
+    // callback has fired, making teardown safe.
+    ($ty:ty, field = $field:ident, drain = $drain:path, invalidate = $invalidate:path, release = $release:path $(,)?) => {
+        impl Drop for $ty {
+            fn drop(&mut self) {
+                if !self.$field.is_null() {
+                    unsafe {
+                        let _ = $drain(self.$field);
+                        $invalidate(self.$field);
+                        $release(self.$field.cast());
+                    }
+                }
+            }
+        }
+    };
 }
 
 pub(crate) use vt_retained;

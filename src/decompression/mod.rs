@@ -81,6 +81,13 @@ unsafe impl Sync for DecompressionSession {}
 crate::utils::retained::vt_retained!(
     DecompressionSession,
     field = session,
+    // Drain in-flight async decode callbacks before invalidate+release. The VT
+    // hardware decoder dispatches the output callback on its own queue even when
+    // async mode is not requested, so without this wait, dropping the session
+    // (on an in-stream SPS/PPS rebuild or pipeline teardown) frees the callback
+    // ref-con while a callback is still running → use-after-free crash on the
+    // `vtdecoder-callback-queue`.
+    drain = ffi::VTDecompressionSessionWaitForAsynchronousFrames,
     invalidate = ffi::VTDecompressionSessionInvalidate,
     release = ffi::CFRelease,
 );
