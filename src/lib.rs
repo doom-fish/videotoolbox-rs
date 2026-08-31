@@ -126,5 +126,7 @@ pub mod prelude {
     pub use crate::transfer::{PixelRotationSession, PixelTransferSession, Rotation};
 
     #[cfg(feature = "compression")]
-    pub use crate::compression::{CompressionSession, CompressionSessionBuilder, EncodedFrame};
+    pub use crate::compression::{
+        CompressionSession, CompressionSessionBuilder, EncodedFrame, ProfileLevel,
+    };
 }

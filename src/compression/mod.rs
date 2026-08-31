@@ -126,6 +126,34 @@ macro_rules! define_profile_levels {
         }
 
         impl ProfileLevel {
+            /// Every profile level this build knows about, in declaration order.
+            pub const ALL: &'static [Self] = &[$(Self::$variant,)+];
+
+            /// The variant's Rust name, e.g. `"H264HighAutoLevel"`.
+            #[must_use]
+            pub const fn name(self) -> &'static str {
+                match self {
+                    $(
+                        Self::$variant => stringify!($variant),
+                    )+
+                }
+            }
+
+            /// Look a profile up by [`Self::name`], ignoring case and any
+            /// `_`/`-`/`.` separators, so `"h264 high auto level"` and
+            /// `"H264High_AutoLevel"` both resolve.
+            #[must_use]
+            pub fn from_name(name: &str) -> Option<Self> {
+                fn normalize(s: &str) -> String {
+                    s.chars()
+                        .filter(|c| c.is_ascii_alphanumeric())
+                        .map(|c| c.to_ascii_lowercase())
+                        .collect()
+                }
+                let wanted = normalize(name);
+                Self::ALL.iter().copied().find(|p| normalize(p.name()) == wanted)
+            }
+
             pub(crate) fn as_cf_string(self) -> ffi::CFStringRef {
                 // SAFETY: FFI constants are statically defined by Apple's VideoToolbox SDK.
                 // Returning them as immutable references is safe.
@@ -1096,5 +1124,21 @@ mod tests {
         assert_ne!(real_time, profile_level);
         assert_ne!(real_time, quality);
         assert_ne!(profile_level, quality);
+    }
+
+    #[test]
+    fn profile_level_round_trips_through_its_name() {
+        for profile in ProfileLevel::ALL {
+            assert_eq!(ProfileLevel::from_name(profile.name()), Some(*profile));
+        }
+    }
+
+    #[test]
+    fn profile_level_lookup_ignores_case_and_separators() {
+        let expected = Some(ProfileLevel::H264HighAutoLevel);
+        assert_eq!(ProfileLevel::from_name("h264highautolevel"), expected);
+        assert_eq!(ProfileLevel::from_name("H264_High_AutoLevel"), expected);
+        assert_eq!(ProfileLevel::from_name("h264 high auto level"), expected);
+        assert_eq!(ProfileLevel::from_name("nope"), None);
     }
 }

@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-08-31
+
+### Added
+
+- `ProfileLevel::ALL`, `ProfileLevel::name()` and `ProfileLevel::from_name()`,
+  so encoder profiles can be selected from configuration strings without each
+  caller maintaining its own name table. `from_name` ignores case and
+  `_`/`-`/`.` separators.
+- `ProfileLevel` is now re-exported from the `compression` prelude.
+
 ## [0.18.2] - 2026-08-31
 
 ### Fixed
