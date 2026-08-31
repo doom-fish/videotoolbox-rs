@@ -144,7 +144,7 @@ impl DecompressionSession {
     ///
     /// Use this to force the output pixel format (for example a `420f`
     /// full-range NV12 buffer required by some renderers) or to require
-    /// IOSurface backing for zero-copy GPU interop, by passing a dictionary
+    /// `IOSurface` backing for zero-copy GPU interop, by passing a dictionary
     /// keyed on `kCVPixelBufferPixelFormatTypeKey` /
     /// `kCVPixelBufferIOSurfacePropertiesKey`.
     ///

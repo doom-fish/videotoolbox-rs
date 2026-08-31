@@ -448,40 +448,41 @@ mod tests {
     #[test]
     fn rotation_variants_map_to_expected_cfstring_constants() {
         assert_eq!(Rotation::None.as_cf_string(), unsafe { ffi::kVTRotation_0 });
-        assert_eq!(
-            Rotation::Clockwise90.as_cf_string(),
-            unsafe { ffi::kVTRotation_CW90 }
-        );
-        assert_eq!(Rotation::Half180.as_cf_string(), unsafe { ffi::kVTRotation_180 });
-        assert_eq!(
-            Rotation::CounterClockwise90.as_cf_string(),
-            unsafe { ffi::kVTRotation_CCW90 }
-        );
+        assert_eq!(Rotation::Clockwise90.as_cf_string(), unsafe {
+            ffi::kVTRotation_CW90
+        });
+        assert_eq!(Rotation::Half180.as_cf_string(), unsafe {
+            ffi::kVTRotation_180
+        });
+        assert_eq!(Rotation::CounterClockwise90.as_cf_string(), unsafe {
+            ffi::kVTRotation_CCW90
+        });
     }
 
     #[test]
     fn scaling_modes_map_to_expected_cfstring_constants() {
-        assert_eq!(ScalingMode::Normal.as_cf_string(), unsafe { ffi::kVTScalingMode_Normal });
+        assert_eq!(ScalingMode::Normal.as_cf_string(), unsafe {
+            ffi::kVTScalingMode_Normal
+        });
         assert_eq!(
             ScalingMode::CropSourceToCleanAperture.as_cf_string(),
             unsafe { ffi::kVTScalingMode_CropSourceToCleanAperture }
         );
-        assert_eq!(
-            ScalingMode::Letterbox.as_cf_string(),
-            unsafe { ffi::kVTScalingMode_Letterbox }
-        );
-        assert_eq!(ScalingMode::Trim.as_cf_string(), unsafe { ffi::kVTScalingMode_Trim });
+        assert_eq!(ScalingMode::Letterbox.as_cf_string(), unsafe {
+            ffi::kVTScalingMode_Letterbox
+        });
+        assert_eq!(ScalingMode::Trim.as_cf_string(), unsafe {
+            ffi::kVTScalingMode_Trim
+        });
     }
 
     #[test]
     fn downsampling_modes_map_to_expected_cfstring_constants() {
-        assert_eq!(
-            DownsamplingMode::Decimate.as_cf_string(),
-            unsafe { ffi::kVTDownsamplingMode_Decimate }
-        );
-        assert_eq!(
-            DownsamplingMode::Average.as_cf_string(),
-            unsafe { ffi::kVTDownsamplingMode_Average }
-        );
+        assert_eq!(DownsamplingMode::Decimate.as_cf_string(), unsafe {
+            ffi::kVTDownsamplingMode_Decimate
+        });
+        assert_eq!(DownsamplingMode::Average.as_cf_string(), unsafe {
+            ffi::kVTDownsamplingMode_Average
+        });
     }
 }

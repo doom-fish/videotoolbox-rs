@@ -1035,10 +1035,11 @@ mod tests {
                 < 1.0e-9
         );
         assert_eq!(builder.max_keyframe_interval, Some(120));
-        assert!(
-            (builder.quality.expect("quality should be set") - 0.75).abs() < f32::EPSILON
+        assert!((builder.quality.expect("quality should be set") - 0.75).abs() < f32::EPSILON);
+        assert_eq!(
+            builder.profile_level,
+            Some(ProfileLevel::HEVCMain10AutoLevel)
         );
-        assert_eq!(builder.profile_level, Some(ProfileLevel::HEVCMain10AutoLevel));
     }
 
     #[test]
@@ -1075,14 +1076,12 @@ mod tests {
 
     #[test]
     fn profile_level_maps_to_expected_cfstring_constants() {
-        assert_eq!(
-            ProfileLevel::H264HighAutoLevel.as_cf_string(),
-            unsafe { ffi::kVTProfileLevel_H264_High_AutoLevel }
-        );
-        assert_eq!(
-            ProfileLevel::HEVCMain10AutoLevel.as_cf_string(),
-            unsafe { ffi::kVTProfileLevel_HEVC_Main10_AutoLevel }
-        );
+        assert_eq!(ProfileLevel::H264HighAutoLevel.as_cf_string(), unsafe {
+            ffi::kVTProfileLevel_H264_High_AutoLevel
+        });
+        assert_eq!(ProfileLevel::HEVCMain10AutoLevel.as_cf_string(), unsafe {
+            ffi::kVTProfileLevel_HEVC_Main10_AutoLevel
+        });
     }
 
     #[test]
