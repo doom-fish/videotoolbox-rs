@@ -1,5 +1,26 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- `DecompressionSession` teardown now calls
+  `VTDecompressionSessionWaitForAsynchronousFrames` before invalidating the
+  session. VideoToolbox dispatches the decode output callback on its own queue
+  even when async mode was not requested, so invalidating while a callback was
+  in flight freed the callback ref-con underneath the running callback. This
+  crashed on the decoder callback queue whenever the decoder was replaced (an
+  in-stream SPS/PPS rebuild) or torn down.
+
+## [0.18.1] - 2026-05-20
+
+### Fixed
+
+- Decode callbacks are guarded against panicking across the `extern "C"`
+  boundary, and a poisoned mutex no longer aborts the callback.
+- Swift/C FFI hardening: panic safety at every trampoline, ABI layout
+  assertions, and a single retain/release macro for CoreFoundation handles.
+
 ## [0.18.0] - 2026-05-20
 
 ### Added
@@ -263,7 +284,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `apple-cf` as a regular dependency (with `cm` + `iosurface` features).
 
-## [Unreleased]
+## [0.1.0] - 2026-05-15
 
 ### Added
 
@@ -281,11 +302,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Smoke-test examples that produce real H.264 bitstreams from BGRA IOSurfaces:
   - `01_encode_smoke` — single 1920×1080 frame.
   - `02_encode_sequence` — 30-frame 640×480 sequence with verified IDR pacing.
-
-### Planned
-
-- `VTDecompressionSession` (decoder)
-- `VTPixelTransferSession` (pixel-format / colour-space conversion)
-- Async encode API via `VTCompressionSessionEncodeFrameWithOutputHandler`
-- HEVC profile-level helpers
-- HDR metadata
