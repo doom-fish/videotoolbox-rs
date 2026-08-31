@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.18.2] - 2026-08-31
+
 ### Fixed
 
 - `DecompressionSession` teardown now calls
