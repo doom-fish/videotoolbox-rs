@@ -19,6 +19,7 @@ Safe Rust bindings for Apple's [VideoToolbox](https://developer.apple.com/docume
 ### Async notes
 
 - `AsyncRawProcessingSession::parameter_changes(...)` exposes `VTRAWProcessingSessionSetParameterChangedHandler` as a bounded async stream.
+- One-shot async decompression accepts exactly one sample per `CMSampleBuffer`; multi-sample buffers return `VTError::UnexpectedSampleCount` before native submission.
 - `VTDecompressionSessionSetMultiImageCallback` remains sync-only for now: the audited C API requires a non-null callback and exposes no clear / unsubscribe hook for an RAII async stream wrapper.
 
 ## Why not bindgen?

@@ -16,6 +16,10 @@ let package = Package(
         .target(
             name: "VideoToolboxBridge",
             path: "Sources/VideoToolboxBridge",
-            publicHeadersPath: "include")
+            publicHeadersPath: "include"),
+        .testTarget(
+            name: "VideoToolboxBridgeTests",
+            dependencies: ["VideoToolboxBridge"],
+            path: "Tests/VideoToolboxBridgeTests")
     ]
 )

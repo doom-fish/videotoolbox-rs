@@ -282,8 +282,12 @@ type SupportedPropertyDictionaryFn =
 #[test]
 fn new_safe_wrappers_are_reachable() {
     let encode_multi_image_fn: EncodeMultiImageFn = CompressionSession::encode_multi_image;
+    let compression_invalidate_fn: fn(CompressionSession) -> Result<(), VTError> =
+        CompressionSession::invalidate;
     let stereo_encode_support_fn: fn() -> bool =
         CompressionSession::is_stereo_mvhevc_encode_supported;
+    let decompression_invalidate_fn: fn(DecompressionSession) -> Result<(), VTError> =
+        DecompressionSession::invalidate;
     let stereo_decode_support_fn: fn() -> bool =
         DecompressionSession::is_stereo_mvhevc_decode_supported;
     let decode_with_options_fn: DecodeWithOptionsFn = DecompressionSession::decode_with_options;
@@ -318,7 +322,9 @@ fn new_safe_wrappers_are_reachable() {
 
     let _ = (
         encode_multi_image_fn,
+        compression_invalidate_fn,
         stereo_encode_support_fn,
+        decompression_invalidate_fn,
         stereo_decode_support_fn,
         decode_with_options_fn,
         set_multi_image_callback_fn,

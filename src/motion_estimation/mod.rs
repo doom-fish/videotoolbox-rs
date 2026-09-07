@@ -177,7 +177,8 @@ impl MotionEstimationSession {
         if s != 0 || out.is_null() {
             return Err(VTError::EncodeFailed(s));
         }
-        let motion_vectors = CVPixelBuffer::from_raw(out.cast()).ok_or(VTError::EncodeFailed(0))?;
+        let motion_vectors =
+            unsafe { CVPixelBuffer::from_raw(out.cast()) }.ok_or(VTError::EncodeFailed(0))?;
         Ok(MotionEstimationResult {
             motion_vectors,
             info_flags,
@@ -238,7 +239,7 @@ fn build_creation_options(
 
 fn retained_cf_type<T>(raw: *mut T) -> CFType {
     unsafe {
-        CFType::from_raw_retained(raw.cast())
+        CFType::from_raw_borrowed(raw.cast())
             .expect("VideoToolbox motion-estimation constant must be non-null")
     }
 }

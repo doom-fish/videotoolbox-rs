@@ -316,11 +316,12 @@ impl CompressionSessionBuilder {
 
 /// Hardware-accelerated video compression session.
 ///
-/// Construct via [`CompressionSession::builder`]. Each session owns a Swift-side
+/// Construct via [`CompressionSession::builder`]. Each session owns a native
 /// `VTCompressionSessionRef`; the underlying encoder is invalidated on drop.
 pub struct CompressionSession {
     session: ffi::VTCompressionSessionRef,
     state: Arc<EncoderState>,
+    callback_ref_con: *const EncoderState,
 }
 
 // SAFETY: VideoToolbox sessions are documented as thread-safe for concurrent
@@ -370,9 +371,7 @@ impl CompressionSession {
         if pool.is_null() {
             return None;
         }
-        // SAFETY: Incrementing the retain count on a valid CFType is safe.
-        unsafe { ffi::CFRetain(pool.cast()) };
-        CVPixelBufferPool::from_raw(pool.cast())
+        unsafe { CVPixelBufferPool::from_raw_borrowed(pool.cast()) }
     }
 
     /// Copy one `VTSession` property from the encoder.
@@ -518,8 +517,7 @@ impl CompressionSession {
             out_tx: Mutex::new(tx),
             out_rx: Mutex::new(rx),
         });
-        let state_for_callback = state.clone();
-        let callback_ref_con = Arc::into_raw(state_for_callback)
+        let callback_ref_con = Arc::into_raw(Arc::clone(&state))
             .cast::<c_void>()
             .cast_mut();
 
@@ -553,6 +551,7 @@ impl CompressionSession {
         let session = Self {
             session: session_ptr,
             state,
+            callback_ref_con: callback_ref_con.cast(),
         };
 
         // Apply properties.
@@ -699,6 +698,20 @@ impl CompressionSession {
         future
             .await
             .map_err(|error| VTError::EncoderCallback(parse_async_status(&error)))
+    }
+
+    /// Complete pending output, invalidate the encoder, and release its native resources.
+    ///
+    /// Unlike `Drop`, this surfaces a failure to prove that output callbacks are
+    /// quiescent. On that exceptional path the native callback context is kept
+    /// alive to prevent an in-flight callback from observing freed Rust state.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VTError::CompleteFailed`] if
+    /// `VTCompressionSessionCompleteFrames` fails.
+    pub fn invalidate(mut self) -> Result<(), VTError> {
+        self.teardown()
     }
 
     /// Submit one multi-image frame (for example stereo MV-HEVC left/right eye
@@ -876,23 +889,41 @@ impl CompressionSession {
         }
         Ok(())
     }
+
+    fn teardown(&mut self) -> Result<(), VTError> {
+        if self.session.is_null() {
+            return Ok(());
+        }
+
+        let complete_status =
+            unsafe { ffi::VTCompressionSessionCompleteFrames(self.session, ffi::CMTime::INVALID) };
+        unsafe {
+            ffi::VTCompressionSessionInvalidate(self.session);
+            ffi::CFRelease(self.session.cast());
+        }
+        self.session = ptr::null_mut();
+
+        if complete_status == 0 {
+            self.release_callback_ref_con();
+            Ok(())
+        } else {
+            // A failed drain cannot prove that native code is done with the ref-con.
+            self.callback_ref_con = ptr::null();
+            Err(VTError::CompleteFailed(complete_status))
+        }
+    }
+
+    fn release_callback_ref_con(&mut self) {
+        let callback_ref_con = core::mem::replace(&mut self.callback_ref_con, ptr::null());
+        if !callback_ref_con.is_null() {
+            unsafe { drop(Arc::from_raw(callback_ref_con)) };
+        }
+    }
 }
 
 impl Drop for CompressionSession {
     fn drop(&mut self) {
-        if !self.session.is_null() {
-            unsafe {
-                ffi::VTCompressionSessionInvalidate(self.session);
-                ffi::CFRelease(self.session.cast());
-            }
-        }
-        // The Arc<EncoderState> we leaked into VTCompressionSessionCreate's
-        // ref-con cannot be retrieved here cleanly without unsafe gymnastics —
-        // VideoToolbox doesn't surface the pointer back. Leak it; it's tiny and
-        // sessions are long-lived.
-        //
-        // TODO: bind to VTCompressionSessionGetRefCon if/when we can rely on it
-        // being available.
+        let _ = self.teardown();
     }
 }
 
@@ -930,7 +961,7 @@ fn complete_async_encode(
         }
 
         let Some(sample_buffer) =
-            (unsafe { apple_cf::cm::CMSampleBuffer::from_raw_retained(sample_buffer.cast()) })
+            (unsafe { apple_cf::cm::CMSampleBuffer::from_raw_borrowed(sample_buffer.cast()) })
         else {
             unsafe {
                 AsyncCompletion::<apple_cf::cm::CMSampleBuffer>::complete_err(
@@ -999,7 +1030,7 @@ unsafe extern "C" fn encode_callback(
                 // Wrap the CMSampleBuffer in a safe apple_cf type. The
                 // wrapper retains-on-take so the encoder's reference is
                 // unaffected.
-                let safe = apple_cf::cm::CMSampleBuffer::from_raw_retained(sample_buffer.cast());
+                let safe = apple_cf::cm::CMSampleBuffer::from_raw_borrowed(sample_buffer.cast());
                 Ok(EncodedFrame {
                     data,
                     presentation_time: (pts.value, pts.timescale),
@@ -1018,6 +1049,8 @@ unsafe extern "C" fn encode_callback(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::{CompressionSessionBuilder, EncodedFrame, ProfileLevel};
     use crate::{error::VTError, ffi, session::Codec};
 
@@ -1080,6 +1113,28 @@ mod tests {
             error,
             VTError::InvalidArgument("width/height must be positive (got 0x1080)".to_owned())
         );
+    }
+
+    #[test]
+    fn invalidation_releases_encoder_callback_state() -> Result<(), VTError> {
+        let session = CompressionSessionBuilder::new(16, 16, Codec::H264).build()?;
+        let state = Arc::downgrade(&session.state);
+
+        session.invalidate()?;
+
+        assert!(state.upgrade().is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn drop_releases_encoder_callback_state() -> Result<(), VTError> {
+        let session = CompressionSessionBuilder::new(16, 16, Codec::H264).build()?;
+        let state = Arc::downgrade(&session.state);
+
+        drop(session);
+
+        assert!(state.upgrade().is_none());
+        Ok(())
     }
 
     #[test]

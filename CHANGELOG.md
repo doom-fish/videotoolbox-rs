@@ -1,6 +1,34 @@
 # Changelog
 
-## [Unreleased]
+## [0.20.0] - 2026-09-07
+
+### Added
+
+- `CompressionSession::invalidate` and `DecompressionSession::invalidate`
+  explicitly drain callbacks, release native resources, and report a
+  quiescence failure that `Drop` cannot surface.
+
+### Changed (breaking)
+
+- Migrated `apple-cf` raw wrappers to distinguish transferred +1 ownership
+  from borrowed +0 references, and documented the aliasing invariants around
+  unsafe pixel-buffer and `IOSurface` byte views.
+- Raised in-family requirements to `apple-cf >=0.10, <0.11`,
+  `apple-metal >=0.9, <0.10`, and `doom-fish-utils >=0.4, <0.5`.
+
+### Fixed
+
+- One-shot async decompression now rejects multi-sample `CMSampleBuffer`s with
+  `VTError::UnexpectedSampleCount`, preventing repeated consumption of one
+  completion context.
+- Synchronous RAW processing stores async results in owned Swift state, returns
+  `VTError::TimedOut` on its bounded timeout, and never lets a late task write
+  through a caller stack pointer.
+- RAW parameter-handler replacement now serializes the native transition with
+  Rust ownership and retains each installed context until native and in-flight
+  block references are gone.
+- Successful compression and decompression teardown now reclaims the callback
+  reference retained for the native session instead of leaking it.
 
 ## [0.19.0] - 2026-08-31
 

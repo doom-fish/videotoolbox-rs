@@ -1,4 +1,4 @@
-#![cfg(all(feature = "async", feature = "decompression"))]
+#![cfg(all(feature = "async", feature = "compression", feature = "decompression"))]
 
 mod common;
 

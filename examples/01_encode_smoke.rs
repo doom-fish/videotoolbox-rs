@@ -29,7 +29,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut guard = surface
             .lock(IOSurfaceLockOptions::NONE)
             .map_err(|c| format!("lock failed: {c}"))?;
-        if let Some(bytes) = guard.as_slice_mut() {
+        // SAFETY: The freshly allocated surface has not been shared with native code.
+        if let Some(bytes) = unsafe { guard.as_slice_mut() } {
             for px in bytes.chunks_exact_mut(4) {
                 px[0] = 0x00; // B
                 px[1] = 0x80; // G

@@ -223,7 +223,7 @@ unsafe extern "C" fn frame_silo_collect_sample_buffer(
     let Some(samples) = (unsafe { refcon.cast::<Vec<CMSampleBuffer>>().as_mut() }) else {
         return -1;
     };
-    let Some(sample) = apple_cf::cm::CMSampleBuffer::from_raw_retained(sample_buffer.cast()) else {
+    let Some(sample) = apple_cf::cm::CMSampleBuffer::from_raw_borrowed(sample_buffer.cast()) else {
         return -1;
     };
     samples.push(sample);

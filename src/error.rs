@@ -28,6 +28,14 @@ pub enum VTError {
     EncoderCallback(OSStatus),
     /// A specific `VideoToolbox` / `CoreVideo` / `CoreMedia` API returned non-zero.
     ApiFailed { api: &'static str, status: OSStatus },
+    /// A one-shot operation received a buffer containing an unsupported number of samples.
+    UnexpectedSampleCount {
+        operation: &'static str,
+        expected: usize,
+        actual: i64,
+    },
+    /// A bounded bridge operation did not finish before its deadline.
+    TimedOut { operation: &'static str },
     /// An invalid argument was supplied (e.g. zero width).
     InvalidArgument(String),
 }
@@ -44,7 +52,10 @@ impl VTError {
             | Self::CompleteFailed(s)
             | Self::EncoderCallback(s)
             | Self::ApiFailed { status: s, .. } => Some(*s),
-            Self::PixelBufferCreateFailed(_) | Self::InvalidArgument(_) => None,
+            Self::PixelBufferCreateFailed(_)
+            | Self::UnexpectedSampleCount { .. }
+            | Self::TimedOut { .. }
+            | Self::InvalidArgument(_) => None,
         }
     }
 }
@@ -66,6 +77,15 @@ impl fmt::Display for VTError {
             }
             Self::EncoderCallback(s) => write!(f, "encoder callback reported status {s}"),
             Self::ApiFailed { api, status } => write!(f, "{api} failed: {status}"),
+            Self::UnexpectedSampleCount {
+                operation,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "{operation} requires exactly {expected} sample, but the buffer contains {actual}"
+            ),
+            Self::TimedOut { operation } => write!(f, "{operation} timed out"),
             Self::InvalidArgument(m) => write!(f, "invalid argument: {m}"),
         }
     }
@@ -105,6 +125,22 @@ mod tests {
             VTError::InvalidArgument("width must be positive".to_owned()).status(),
             None
         );
+        assert_eq!(
+            VTError::UnexpectedSampleCount {
+                operation: "decode_frame_async",
+                expected: 1,
+                actual: 2,
+            }
+            .status(),
+            None
+        );
+        assert_eq!(
+            VTError::TimedOut {
+                operation: "RAW frame processing",
+            }
+            .status(),
+            None
+        );
     }
 
     #[test]
@@ -140,6 +176,22 @@ mod tests {
         assert_eq!(
             VTError::EncoderCallback(-8971).to_string(),
             "encoder callback reported status -8971"
+        );
+        assert_eq!(
+            VTError::UnexpectedSampleCount {
+                operation: "DecompressionSession::decode_frame_async",
+                expected: 1,
+                actual: 2,
+            }
+            .to_string(),
+            "DecompressionSession::decode_frame_async requires exactly 1 sample, but the buffer contains 2"
+        );
+        assert_eq!(
+            VTError::TimedOut {
+                operation: "RAW frame processing",
+            }
+            .to_string(),
+            "RAW frame processing timed out"
         );
     }
 }

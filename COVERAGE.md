@@ -1,6 +1,6 @@
 # VideoToolbox coverage audit
 
-Target crate version: `0.11.0`  
+Target crate version: `0.20.0`
 Audited SDK: `MacOSX26.2.sdk`
 
 Legend:
@@ -61,7 +61,7 @@ Legend:
 
 ## Verification
 
-The crate was revalidated after the `0.11.0` sweep with:
+The coverage surface carried by `0.20.0` was revalidated with:
 
 - `cargo check --all-features`
 - `cargo clippy --all-targets --all-features -- -D warnings`

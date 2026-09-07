@@ -66,7 +66,7 @@ pub(crate) unsafe fn copy_property(
             status,
         });
     }
-    Ok(CFType::from_raw(value))
+    Ok(unsafe { CFType::from_raw(value) })
 }
 
 pub(crate) unsafe fn copy_supported_property_dictionary(
@@ -82,7 +82,7 @@ pub(crate) unsafe fn copy_supported_property_dictionary(
             status,
         });
     }
-    CFDictionary::from_raw(out.cast_mut().cast()).ok_or(VTError::ApiFailed {
+    unsafe { CFDictionary::from_raw(out.cast_mut().cast()) }.ok_or(VTError::ApiFailed {
         api: "VTSessionCopySupportedPropertyDictionary",
         status,
     })
@@ -103,7 +103,7 @@ pub(crate) unsafe fn copy_serializable_properties(
             status,
         });
     }
-    CFDictionary::from_raw(out.cast_mut().cast()).ok_or(VTError::ApiFailed {
+    unsafe { CFDictionary::from_raw(out.cast_mut().cast()) }.ok_or(VTError::ApiFailed {
         api: "VTSessionCopySerializableProperties",
         status,
     })

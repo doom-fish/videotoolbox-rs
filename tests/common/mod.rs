@@ -1,14 +1,85 @@
 #![allow(dead_code)]
 
 use apple_cf::{
-    cm::CMFormatDescription,
+    cm::{CMBlockBuffer, CMFormatDescription, CMSampleBuffer, CMSampleTimingInfo, CMTime},
     cv::{CVPixelBuffer, CVPixelBufferLockFlags},
     iosurface::{IOSurface, IOSurfaceLockOptions},
 };
+#[cfg(feature = "compression")]
 use videotoolbox::{Codec, CompressionSession, EncodedFrame, VTError};
 
 pub const BGRA: u32 = u32::from_be_bytes(*b"BGRA");
 pub const H264_AVC1: u32 = u32::from_be_bytes(*b"avc1");
+
+extern "C" {
+    fn CMVideoFormatDescriptionCreateFromH264ParameterSets(
+        allocator: videotoolbox::ffi::CFAllocatorRef,
+        parameter_set_count: usize,
+        parameter_set_pointers: *const *const u8,
+        parameter_set_sizes: *const usize,
+        nal_unit_header_length: i32,
+        format_description_out: *mut videotoolbox::ffi::CMFormatDescriptionRef,
+    ) -> i32;
+    fn CMSampleBufferCreateReady(
+        allocator: videotoolbox::ffi::CFAllocatorRef,
+        data_buffer: videotoolbox::ffi::CMBlockBufferRef,
+        format_description: videotoolbox::ffi::CMFormatDescriptionRef,
+        num_samples: videotoolbox::ffi::CMItemCount,
+        num_sample_timing_entries: videotoolbox::ffi::CMItemCount,
+        sample_timing_array: *const CMSampleTimingInfo,
+        num_sample_size_entries: videotoolbox::ffi::CMItemCount,
+        sample_size_array: *const usize,
+        sample_buffer_out: *mut videotoolbox::ffi::CMSampleBufferRef,
+    ) -> i32;
+}
+
+pub fn make_h264_format_description() -> CMFormatDescription {
+    const SPS: [u8; 14] = [
+        0x67, 0x42, 0x00, 0x1e, 0x95, 0xa8, 0x28, 0x0f, 0x00, 0x44, 0xfc, 0xb8, 0x08, 0x80,
+    ];
+    const PPS: [u8; 4] = [0x68, 0xce, 0x06, 0xe2];
+
+    let parameter_sets = [SPS.as_ptr(), PPS.as_ptr()];
+    let parameter_set_sizes = [SPS.len(), PPS.len()];
+    let mut description: videotoolbox::ffi::CMFormatDescriptionRef = core::ptr::null();
+    let status = unsafe {
+        CMVideoFormatDescriptionCreateFromH264ParameterSets(
+            videotoolbox::ffi::kCFAllocatorDefault,
+            parameter_sets.len(),
+            parameter_sets.as_ptr(),
+            parameter_set_sizes.as_ptr(),
+            4,
+            &mut description,
+        )
+    };
+    assert_eq!(status, 0, "failed to create synthetic H.264 format");
+    unsafe { CMFormatDescription::from_raw(description.cast_mut().cast()) }
+        .expect("synthetic H.264 format must be non-null")
+}
+
+pub fn make_two_sample_buffer() -> CMSampleBuffer {
+    let data = CMBlockBuffer::create(&[0, 0]).expect("failed to create synthetic block buffer");
+    let timing =
+        CMSampleTimingInfo::with_times(CMTime::new(1, 30), CMTime::new(0, 30), CMTime::INVALID);
+    let sample_sizes = [1, 1];
+    let mut sample_buffer = core::ptr::null_mut();
+    let status = unsafe {
+        CMSampleBufferCreateReady(
+            videotoolbox::ffi::kCFAllocatorDefault,
+            data.as_ptr().cast(),
+            core::ptr::null_mut(),
+            2,
+            1,
+            core::ptr::from_ref(&timing),
+            2,
+            sample_sizes.as_ptr(),
+            &mut sample_buffer,
+        )
+    };
+    assert_eq!(status, 0, "failed to create synthetic sample buffer");
+    unsafe { CMSampleBuffer::from_raw(sample_buffer.cast()) }
+        .expect("synthetic sample buffer must be non-null")
+}
 
 pub fn make_test_surface(width: usize, height: usize) -> IOSurface {
     let surface = IOSurface::create(width, height, BGRA, 4).expect("failed to allocate IOSurface");
@@ -23,7 +94,8 @@ pub fn fill_surface_pattern(surface: &IOSurface) {
     let width = guard.width();
     let height = guard.height();
     let bytes_per_row = guard.bytes_per_row();
-    let bytes = guard.as_slice_mut().expect("IOSurface must expose bytes");
+    // SAFETY: Test surfaces are filled before they are submitted to native sessions.
+    let bytes = unsafe { guard.as_slice_mut() }.expect("IOSurface must expose bytes");
 
     for y in 0..height {
         for x in 0..width {
@@ -39,6 +111,7 @@ pub fn fill_surface_pattern(surface: &IOSurface) {
     }
 }
 
+#[cfg(feature = "compression")]
 pub fn encode_h264_test_frame(width: i32, height: i32) -> Result<EncodedFrame, VTError> {
     let surface = make_test_surface(
         usize::try_from(width).expect("width must be non-negative"),
@@ -92,7 +165,7 @@ pub fn make_video_format_description(
         )
     };
     if status == 0 && !desc.is_null() {
-        CMFormatDescription::from_raw(desc.cast_mut().cast()).ok_or(status)
+        unsafe { CMFormatDescription::from_raw(desc.cast_mut().cast()) }.ok_or(status)
     } else {
         Err(status)
     }
@@ -111,9 +184,8 @@ pub fn fill_bgra_pixels(buffer: &CVPixelBuffer, pixels: &[[u8; 4]]) {
     let width = guard.width();
     let height = guard.height();
     let bytes_per_row = guard.bytes_per_row();
-    let bytes = guard
-        .as_slice_mut()
-        .expect("read-write lock must expose mutable bytes");
+    // SAFETY: Test buffers are filled before they are submitted to native sessions.
+    let bytes = unsafe { guard.as_slice_mut() }.expect("read-write lock must expose mutable bytes");
 
     for y in 0..height {
         for x in 0..width {
@@ -130,7 +202,9 @@ pub fn bgra_pixel(buffer: &CVPixelBuffer, x: usize, y: usize) -> [u8; 4] {
     assert!(x < guard.width(), "x coordinate out of bounds");
     assert!(y < guard.height(), "y coordinate out of bounds");
     let offset = y * guard.bytes_per_row() + x * 4;
-    guard.as_slice()[offset..offset + 4]
+    // SAFETY: Processing has completed and the test holds no mutable byte access.
+    let bytes = unsafe { guard.as_slice() }.expect("BGRA buffer must be non-planar");
+    bytes[offset..offset + 4]
         .try_into()
         .expect("BGRA pixel should have four bytes")
 }
@@ -145,14 +219,19 @@ pub fn assert_bgra_pixels_equal(left: &CVPixelBuffer, right: &CVPixelBuffer) {
     let right_guard = right
         .lock_read_only()
         .expect("failed to lock rhs pixel buffer");
+    // SAFETY: Processing has completed and both buffers are held read-only.
+    let left_bytes = unsafe { left_guard.as_slice() }.expect("lhs BGRA buffer must be non-planar");
+    // SAFETY: Processing has completed and both buffers are held read-only.
+    let right_bytes =
+        unsafe { right_guard.as_slice() }.expect("rhs BGRA buffer must be non-planar");
 
     for y in 0..left_guard.height() {
         for x in 0..left_guard.width() {
             let left_offset = y * left_guard.bytes_per_row() + x * 4;
             let right_offset = y * right_guard.bytes_per_row() + x * 4;
             assert_eq!(
-                &left_guard.as_slice()[left_offset..left_offset + 4],
-                &right_guard.as_slice()[right_offset..right_offset + 4],
+                &left_bytes[left_offset..left_offset + 4],
+                &right_bytes[right_offset..right_offset + 4],
                 "pixel mismatch at ({x}, {y})"
             );
         }

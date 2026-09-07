@@ -36,7 +36,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut guard = surface
                 .lock(IOSurfaceLockOptions::NONE)
                 .map_err(|c| format!("lock failed: {c}"))?;
-            if let Some(bytes) = guard.as_slice_mut() {
+            // SAFETY: The preceding synchronous encode has completed before this mutation.
+            if let Some(bytes) = unsafe { guard.as_slice_mut() } {
                 let g = u8::try_from(i * 8).unwrap_or(255);
                 for px in bytes.chunks_exact_mut(4) {
                     px[0] = 0x40; // B

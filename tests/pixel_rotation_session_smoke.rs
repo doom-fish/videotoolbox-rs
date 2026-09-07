@@ -16,9 +16,9 @@ fn pixel_rotation_session_rotates_clockwise_90() -> Result<(), VTError> {
             .lock(CVPixelBufferLockFlags::NONE)
             .expect("failed to lock source pixel buffer");
         let bytes_per_row = guard.bytes_per_row();
-        let bytes = guard
-            .as_slice_mut()
-            .expect("read-write lock must expose source bytes");
+        // SAFETY: The synthetic source has not been handed to the rotation session yet.
+        let bytes =
+            unsafe { guard.as_slice_mut() }.expect("read-write lock must expose source bytes");
         bytes.fill(0);
 
         let corners = [

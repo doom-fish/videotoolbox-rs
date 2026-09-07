@@ -67,9 +67,8 @@ fn fill_bgra_pixels(buffer: &CVPixelBuffer, pixels: &[[u8; 4]]) {
     let width = guard.width();
     let height = guard.height();
     let bytes_per_row = guard.bytes_per_row();
-    let bytes = guard
-        .as_slice_mut()
-        .expect("read-write lock must expose mutable bytes");
+    // SAFETY: The new buffer has not been submitted or shared with another accessor.
+    let bytes = unsafe { guard.as_slice_mut() }.expect("read-write lock must expose mutable bytes");
 
     for y in 0..height {
         for x in 0..width {

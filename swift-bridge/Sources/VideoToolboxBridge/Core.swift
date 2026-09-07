@@ -37,28 +37,87 @@ public func vtb_status(from error: Error) -> Int32 {
     Int32((error as NSError).code)
 }
 
-/// Synchronously block the calling thread on an async Swift call,
-/// returning a single result via an out-parameter handler.
-///
-/// Used to bridge `async throws` Swift APIs (motion estimation,
-/// RAW processing, frame processor) into the synchronous C ABI Rust
-/// expects.
-public func vtb_block_on_async<T>(
-    timeoutSeconds: Int = 30,
-    work: @escaping () async throws -> T,
-    onSuccess: @escaping (T) -> Void
-) -> Int32 {
-    let sem = DispatchSemaphore(value: 0)
-    var status: Int32 = 0
-    Task {
-        do {
-            let result = try await work()
-            onSuccess(result)
-        } catch {
-            status = vtb_status(from: error)
-        }
-        sem.signal()
+// Private bridge FourCCs: "vtto" for timeout and "vtas" for invalid async state.
+let VTB_TIMED_OUT: Int32 = Int32(bitPattern: 0x7674_746f)
+private let VTB_ASYNC_STATE_ERROR: Int32 = Int32(bitPattern: 0x7674_6173)
+
+enum VTBBlockingAsyncResult<T> {
+    case success(T)
+    case failure(Int32)
+    case timedOut
+}
+
+private final class VTBBlockingAsyncState<T>: @unchecked Sendable {
+    private enum Storage {
+        case pending
+        case completed(VTBBlockingAsyncResult<T>)
+        case timedOut
     }
-    _ = sem.wait(timeout: .now() + .seconds(timeoutSeconds))
-    return status
+
+    private let lock = NSLock()
+    private var storage: Storage = .pending
+
+    func complete(_ result: VTBBlockingAsyncResult<T>) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard case .pending = storage else {
+            return false
+        }
+        storage = .completed(result)
+        return true
+    }
+
+    func completedResult() -> VTBBlockingAsyncResult<T> {
+        lock.lock()
+        defer { lock.unlock() }
+        guard case let .completed(result) = storage else {
+            return .failure(VTB_ASYNC_STATE_ERROR)
+        }
+        return result
+    }
+
+    func markTimedOutOrTakeCompleted() -> VTBBlockingAsyncResult<T>? {
+        lock.lock()
+        defer { lock.unlock() }
+        switch storage {
+        case .pending:
+            storage = .timedOut
+            return nil
+        case let .completed(result):
+            return result
+        case .timedOut:
+            return .timedOut
+        }
+    }
+}
+
+/// Synchronously wait for an async Swift call without sharing caller-owned
+/// output storage with the task.
+func vtb_block_on_async<T>(
+    timeout: DispatchTimeInterval = .seconds(30),
+    work: @escaping () async throws -> T
+) -> VTBBlockingAsyncResult<T> {
+    let semaphore = DispatchSemaphore(value: 0)
+    let state = VTBBlockingAsyncState<T>()
+    let task = Task {
+        let result: VTBBlockingAsyncResult<T>
+        do {
+            result = .success(try await work())
+        } catch {
+            result = .failure(vtb_status(from: error))
+        }
+        if state.complete(result) {
+            semaphore.signal()
+        }
+    }
+
+    if semaphore.wait(timeout: .now() + timeout) == .success {
+        return state.completedResult()
+    }
+    if let completed = state.markTimedOutOrTakeCompleted() {
+        return completed
+    }
+
+    task.cancel()
+    return .timedOut
 }

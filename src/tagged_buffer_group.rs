@@ -79,8 +79,7 @@ impl TaggedBufferGroup {
         if ptr.is_null() {
             None
         } else {
-            unsafe { ffi::CFRetain(ptr.cast()) };
-            CVPixelBuffer::from_raw(ptr.cast())
+            unsafe { CVPixelBuffer::from_raw_borrowed(ptr.cast()) }
         }
     }
 
@@ -89,7 +88,7 @@ impl TaggedBufferGroup {
     pub fn sample_buffer_at(&self, index: usize) -> Option<CMSampleBuffer> {
         let index = isize::try_from(index).ok()?;
         let ptr = unsafe { ffi::CMTaggedBufferGroupGetCMSampleBufferAtIndex(self.inner, index) };
-        unsafe { CMSampleBuffer::from_raw_retained(ptr.cast()) }
+        unsafe { CMSampleBuffer::from_raw_borrowed(ptr.cast()) }
     }
 }
 

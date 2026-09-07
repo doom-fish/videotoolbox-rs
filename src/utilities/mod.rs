@@ -61,7 +61,7 @@ pub fn copy_video_decoder_extension_properties(
             status,
         });
     }
-    CFDictionary::from_raw(out.cast_mut().cast()).ok_or(VTError::ApiFailed {
+    unsafe { CFDictionary::from_raw(out.cast_mut().cast()) }.ok_or(VTError::ApiFailed {
         api: "VTCopyVideoDecoderExtensionProperties",
         status,
     })
@@ -86,7 +86,7 @@ pub fn copy_raw_processor_extension_properties(
             status,
         });
     }
-    CFDictionary::from_raw(out.cast_mut().cast()).ok_or(VTError::ApiFailed {
+    unsafe { CFDictionary::from_raw(out.cast_mut().cast()) }.ok_or(VTError::ApiFailed {
         api: "VTCopyRAWProcessorExtensionProperties",
         status,
     })

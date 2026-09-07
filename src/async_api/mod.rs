@@ -160,8 +160,10 @@ impl<'a> AsyncDecompressionSession<'a> {
     ///
     /// # Errors
     ///
-    /// Returns [`VTError::EncoderCallback`] if the decoder rejects the frame,
-    /// reports an asynchronous failure, or completes without an image buffer.
+    /// Returns [`VTError::UnexpectedSampleCount`] unless `sample_buffer`
+    /// contains exactly one sample. Returns [`VTError::EncoderCallback`] if the
+    /// decoder rejects the frame, reports an asynchronous failure, or completes
+    /// without an image buffer.
     #[must_use = "futures do nothing unless awaited"]
     #[allow(clippy::future_not_send)]
     pub fn decode_frame(
@@ -395,7 +397,7 @@ mod tests {
             )
         };
         if status == 0 && !description.is_null() {
-            CMFormatDescription::from_raw(description.cast_mut().cast()).ok_or(status)
+            unsafe { CMFormatDescription::from_raw(description.cast_mut().cast()) }.ok_or(status)
         } else {
             Err(status)
         }

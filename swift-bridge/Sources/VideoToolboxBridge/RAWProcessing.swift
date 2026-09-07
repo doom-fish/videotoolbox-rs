@@ -20,8 +20,35 @@ public typealias VTBRawProcessFrameAsyncCallback = @convention(c) (
     Int32,
     UnsafeMutableRawPointer?
 ) -> Void
+public typealias VTBRawParameterContextRelease = @convention(c) (
+    UnsafeMutableRawPointer?
+) -> Void
 
 typealias VTBRawParameterChangedHandler = @convention(block) (CFArray?) -> Void
+
+private final class VTBRawParameterChangedContext {
+    private let refcon: UnsafeMutableRawPointer?
+    private let callback: VTBRawParameterChangedCallback
+    private let release: VTBRawParameterContextRelease?
+
+    init(
+        refcon: UnsafeMutableRawPointer?,
+        callback: @escaping VTBRawParameterChangedCallback,
+        release: VTBRawParameterContextRelease?
+    ) {
+        self.refcon = refcon
+        self.callback = callback
+        self.release = release
+    }
+
+    deinit {
+        release?(refcon)
+    }
+
+    func invoke(_ parameters: CFArray?) {
+        callback(refcon, parameters)
+    }
+}
 
 @available(macOS 26.0, *)
 @_silgen_name("VTRAWProcessingSessionSetParameterChangedHandler")
@@ -42,12 +69,15 @@ public func vtb_raw_session_process_frame(
     if #available(macOS 15.0, *) {
         let s: VTRAWProcessingSession = vtb_borrow(session)
         let pb: CVPixelBuffer = vtb_borrow(inputPixelBuffer)
-        return vtb_block_on_async(
-            work: { try await s.process(frame: pb) },
-            onSuccess: { processed in
-                out.pointee = vtb_retain(processed)
-            }
-        )
+        switch vtb_block_on_async(work: { try await s.process(frame: pb) }) {
+        case let .success(processed):
+            out.pointee = vtb_retain(processed)
+            return 0
+        case let .failure(status):
+            return status
+        case .timedOut:
+            return VTB_TIMED_OUT
+        }
     }
     return VTB_NOT_SUPPORTED
 }
@@ -85,13 +115,21 @@ public func vtb_raw_session_process_frame_async(
 public func vtb_raw_session_set_parameter_changed_handler(
     _ session: UnsafeMutableRawPointer,
     _ refcon: UnsafeMutableRawPointer?,
-    _ callback: VTBRawParameterChangedCallback?
+    _ callback: VTBRawParameterChangedCallback?,
+    _ contextRelease: VTBRawParameterContextRelease?
 ) -> Int32 {
+    let context = callback.map {
+        VTBRawParameterChangedContext(
+            refcon: refcon,
+            callback: $0,
+            release: contextRelease
+        )
+    }
     if #available(macOS 26.0, *) {
         let s: VTRAWProcessingSession = vtb_borrow(session)
-        let handler = callback.map { callback in
+        let handler = context.map { context in
             { (newParameters: CFArray?) in
-                callback(refcon, newParameters)
+                context.invoke(newParameters)
             }
         }
         return vtb_raw_processing_session_set_parameter_changed_handler(s, handler)
