@@ -205,8 +205,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             FrameProcessorSubmissionMode::Sequential,
             &flow,
         )?;
-        command_buffer.commit();
-        command_buffer.wait_until_completed();
+        command_buffer.commit()?;
+        command_buffer.wait_until_completed()?;
         println!("✅ optical flow processed via Metal command buffer");
     }
 
