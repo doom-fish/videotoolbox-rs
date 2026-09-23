@@ -24,8 +24,6 @@ public typealias VTBRawParameterContextRelease = @convention(c) (
     UnsafeMutableRawPointer?
 ) -> Void
 
-typealias VTBRawParameterChangedHandler = @convention(block) (CFArray?) -> Void
-
 private final class VTBRawParameterChangedContext {
     private let refcon: UnsafeMutableRawPointer?
     private let callback: VTBRawParameterChangedCallback
@@ -49,13 +47,6 @@ private final class VTBRawParameterChangedContext {
         callback(refcon, parameters)
     }
 }
-
-@available(macOS 26.0, *)
-@_silgen_name("VTRAWProcessingSessionSetParameterChangedHandler")
-private func vtb_raw_processing_session_set_parameter_changed_handler(
-    _ session: VTRAWProcessingSession,
-    _ parameterChangedHandler: VTBRawParameterChangedHandler?
-) -> OSStatus
 
 /// Process a single RAW frame synchronously, returning the
 /// processed `CVPixelBuffer` (retained +1) via `out`.
@@ -125,14 +116,18 @@ public func vtb_raw_session_set_parameter_changed_handler(
             release: contextRelease
         )
     }
+    let handler = context.map { context in
+        { (newParameters: CFArray?) in
+            context.invoke(newParameters)
+        }
+    }
     if #available(macOS 26.0, *) {
         let s: VTRAWProcessingSession = vtb_borrow(session)
-        let handler = context.map { context in
-            { (newParameters: CFArray?) in
-                context.invoke(newParameters)
-            }
-        }
-        return vtb_raw_processing_session_set_parameter_changed_handler(s, handler)
+        return __VTRAWProcessingSessionSetParameterChangedHandler(s, handler)
+    }
+    if #available(macOS 15.0, *) {
+        let s: VTRAWProcessingSession = vtb_borrow(session)
+        return __VTRAWProcessingSessionSetParameterChangedHander(s, handler)
     }
     return VTB_NOT_SUPPORTED
 }
