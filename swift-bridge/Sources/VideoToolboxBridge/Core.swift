@@ -34,7 +34,7 @@ public func vtb_release<T: AnyObject>(_ ptr: UnsafeMutableRawPointer, as _: T.Ty
 /// `Int32` Rust expects.
 @inline(__always)
 public func vtb_status(from error: Error) -> Int32 {
-    Int32((error as NSError).code)
+    Int32(clamping: (error as NSError).code)
 }
 
 // Private bridge FourCCs: "vtto" for timeout and "vtas" for invalid async state.

@@ -222,7 +222,7 @@ public func vt_super_resolution_model_status(
             qualityPrioritizationRaw: qualityPrioritization,
             revisionRaw: revision
         ) else { return VTB_PARAM_ERR }
-        return Int32(cfg.configurationModelStatus.rawValue)
+        return Int32(clamping: cfg.configurationModelStatus.rawValue)
     }
     return VTB_NOT_SUPPORTED
 }
