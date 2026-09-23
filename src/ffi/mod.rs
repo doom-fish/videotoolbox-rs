@@ -598,7 +598,6 @@ extern "C" {
     ) -> OSStatus;
 
     pub static kVTDecompressionPropertyKey_RealTime: CFStringRef;
-    pub static kVTDecompressionPropertyKey_MaximumOutputBufferDepth: CFStringRef;
     pub static kVTDecompressionPropertyKey_UsingHardwareAcceleratedVideoDecoder: CFStringRef;
     pub static kVTDecodeFrameOptionKey_ContentAnalyzerCropRectangle: CFStringRef;
     pub static kVTDecodeFrameOptionKey_ContentAnalyzerRotation: CFStringRef;

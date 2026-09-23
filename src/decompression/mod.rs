@@ -471,31 +471,6 @@ impl DecompressionSession {
         unsafe { self.set_property(ffi::kVTDecompressionPropertyKey_RealTime, v.cast()) }
     }
 
-    /// Suggest a maximum number of frames the decoder may keep
-    /// internally awaiting reordering (B-frame reorder depth).
-    /// Wraps `kVTDecompressionPropertyKey_MaximumOutputBufferDepth`.
-    ///
-    /// # Errors
-    ///
-    /// See [`Self::set_property`].
-    pub fn set_max_output_buffer_depth(&self, depth: i32) -> Result<(), VTError> {
-        let v = unsafe {
-            ffi::CFNumberCreate(
-                ffi::kCFAllocatorDefault,
-                ffi::kCFNumberSInt32Type,
-                core::ptr::from_ref(&depth).cast(),
-            )
-        };
-        let r = unsafe {
-            self.set_property(
-                ffi::kVTDecompressionPropertyKey_MaximumOutputBufferDepth,
-                v.cast(),
-            )
-        };
-        unsafe { ffi::CFRelease(v.cast()) };
-        r
-    }
-
     /// Finish any decoded frames the decoder has been holding back
     /// for B-frame reordering. Wraps
     /// `VTDecompressionSessionFinishDelayedFrames`.
