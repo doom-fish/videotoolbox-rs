@@ -4,7 +4,7 @@
 //!
 //! # API Documentation
 //!
-//! Safe, **zero-runtime-dependency** Rust bindings for Apple's
+//! Safe Rust bindings for Apple's
 //! [VideoToolbox](https://developer.apple.com/documentation/videotoolbox)
 //! framework — hardware-accelerated H.264, HEVC, and `ProRes` codecs on macOS.
 //!

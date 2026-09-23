@@ -1,5 +1,7 @@
 # videotoolbox-rs coverage audit (vs MacOSX26.2.sdk)
 
+> **Read this first.** A symbol counts as VERIFIED when `src/ffi` declares an item with the same name (or a Swift bridge path reaches an Objective-C class). Most VERIFIED rows are raw `extern` declarations with no safe wrapper, so this is name coverage of the raw bindings, not safe-API coverage; see `COVERAGE.md` for the safe surface. The list was generated against `MacOSX26.2.sdk` and has not been regenerated for 26.5 or 27.0 (27.0 additions are listed as not wrapped in `COVERAGE.md`). Symbols newer than macOS 13 are resolved at run time by the safe wrappers.
+
 SDK_PUBLIC_SYMBOLS: 449
 VERIFIED: 448
 GAPS: 0
