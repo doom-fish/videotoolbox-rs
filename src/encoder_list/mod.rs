@@ -130,7 +130,7 @@ pub fn available_video_encoder_details_with_options(
             options_dict
                 .as_ref()
                 .map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
-            &mut arr,
+            &raw mut arr,
         )
     };
     if status != 0 {
@@ -177,8 +177,8 @@ pub fn supported_property_dictionary_for_encoder(
             encoder_specification
                 .as_ref()
                 .map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
-            &mut encoder_id_out,
-            &mut supported_properties_out,
+            &raw mut encoder_id_out,
+            &raw mut supported_properties_out,
         )
     };
     if status != 0 {

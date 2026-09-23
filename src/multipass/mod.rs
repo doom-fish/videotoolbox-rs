@@ -44,7 +44,7 @@ impl FrameSilo {
                 ptr::null(),
                 ffi::CMTimeRange::INVALID,
                 ptr::null(),
-                &mut p,
+                &raw mut p,
             )
         };
         if s != 0 || p.is_null() {
@@ -76,7 +76,7 @@ impl FrameSilo {
     /// Returns [`VTError::EncodeFailed`] on `OSStatus` failure.
     pub fn progress_of_current_pass(&self) -> Result<f32, VTError> {
         let mut p: f32 = 0.0;
-        let s = unsafe { ffi::VTFrameSiloGetProgressOfCurrentPass(self.inner, &mut p) };
+        let s = unsafe { ffi::VTFrameSiloGetProgressOfCurrentPass(self.inner, &raw mut p) };
         if s == 0 {
             Ok(p)
         } else {
@@ -181,7 +181,7 @@ impl MultiPassStorage {
                 ptr::null(),
                 ffi::CMTimeRange::INVALID,
                 ptr::null(),
-                &mut p,
+                &raw mut p,
             )
         };
         if s != 0 || p.is_null() {

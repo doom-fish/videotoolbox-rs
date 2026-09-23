@@ -189,7 +189,7 @@ impl RawProcessingSession {
                 format.as_ptr().cast::<c_void>(),
                 ptr::null(),
                 ptr::null(),
-                &mut p,
+                &raw mut p,
             )
         };
         if s != 0 || p.is_null() {
@@ -265,8 +265,9 @@ impl RawProcessingSession {
     /// Returns [`VTError::EncodeFailed`] on `OSStatus` failure.
     pub fn parameters(&self) -> Result<Vec<RawProcessingParameter>, VTError> {
         let mut arr: ffi::CFArrayRef = ptr::null();
-        let s =
-            unsafe { ffi::VTRAWProcessingSessionCopyProcessingParameters(self.inner, &mut arr) };
+        let s = unsafe {
+            ffi::VTRAWProcessingSessionCopyProcessingParameters(self.inner, &raw mut arr)
+        };
         if s != 0 || arr.is_null() {
             return Err(VTError::EncodeFailed(s));
         }
@@ -364,7 +365,7 @@ impl RawProcessingSession {
     pub fn process(&self, input: &CVPixelBuffer) -> Result<CVPixelBuffer, VTError> {
         let mut out: *mut c_void = ptr::null_mut();
         let s = unsafe {
-            vtb_raw_session_process_frame(self.inner, input.as_ptr().cast::<c_void>(), &mut out)
+            vtb_raw_session_process_frame(self.inner, input.as_ptr().cast::<c_void>(), &raw mut out)
         };
         if s == VTB_TIMED_OUT {
             return Err(VTError::TimedOut {

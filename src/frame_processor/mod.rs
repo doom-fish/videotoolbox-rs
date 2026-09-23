@@ -683,7 +683,7 @@ impl FrameProcessorFrame {
             vt_frame_processor_frame_create(
                 buffer.as_ptr(),
                 to_ffi_time(presentation_time_stamp),
-                &mut out,
+                &raw mut out,
             )
         };
         if status != 0 || out.is_null() {
@@ -757,7 +757,7 @@ impl FrameProcessorOpticalFlow {
             vt_frame_processor_optical_flow_create(
                 forward_flow.as_ptr(),
                 backward_flow.as_ptr(),
-                &mut out,
+                &raw mut out,
             )
         };
         if status != 0 || out.is_null() {
@@ -849,7 +849,7 @@ impl FrameProcessor {
                 configuration.input_type as isize,
                 configuration.quality_prioritization as isize,
                 configuration.revision as isize,
-                &mut out,
+                &raw mut out,
             )
         };
         Self::from_status(status, out)
@@ -878,7 +878,7 @@ impl FrameProcessor {
                 configuration.use_precomputed_flow,
                 configuration.quality_prioritization as isize,
                 configuration.revision as isize,
-                &mut out,
+                &raw mut out,
             )
         };
         Self::from_status(status, out)
@@ -896,7 +896,7 @@ impl FrameProcessor {
                 frame_width as isize,
                 frame_height as isize,
                 source_pixel_format,
-                &mut out,
+                &raw mut out,
             )
         };
         Self::from_status(status, out)
@@ -925,7 +925,7 @@ impl FrameProcessor {
                 configuration.use_precomputed_flow,
                 configuration.quality_prioritization as isize,
                 configuration.revision as isize,
-                &mut out,
+                &raw mut out,
             )
         };
         Self::from_status(status, out)
@@ -943,7 +943,7 @@ impl FrameProcessor {
                 frame_width as isize,
                 frame_height as isize,
                 scale_factor,
-                &mut out,
+                &raw mut out,
             )
         };
         Self::from_status(status, out)
@@ -961,7 +961,7 @@ impl FrameProcessor {
                 frame_width as isize,
                 frame_height as isize,
                 number_of_interpolated_frames as isize,
-                &mut out,
+                &raw mut out,
             )
         };
         Self::from_status(status, out)
@@ -986,7 +986,7 @@ impl FrameProcessor {
                 configuration.frame_height as isize,
                 configuration.quality_prioritization as isize,
                 configuration.revision as isize,
-                &mut out,
+                &raw mut out,
             )
         };
         Self::from_status(status, out)

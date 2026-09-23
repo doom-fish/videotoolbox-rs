@@ -494,7 +494,11 @@ impl CompressionSession {
         let mut count: ffi::CMItemCount = 0;
         let mut ranges: *const ffi::CMTimeRange = ptr::null();
         let status = unsafe {
-            ffi::VTCompressionSessionGetTimeRangesForNextPass(self.session, &mut count, &mut ranges)
+            ffi::VTCompressionSessionGetTimeRangesForNextPass(
+                self.session,
+                &raw mut count,
+                &raw mut ranges,
+            )
         };
         if status != 0 {
             return Err(VTError::ApiFailed {
@@ -537,7 +541,7 @@ impl CompressionSession {
                 ffi::kCFAllocatorDefault,
                 Some(encode_callback),
                 callback_ref_con,
-                &mut session_ptr,
+                &raw mut session_ptr,
             )
         };
         if status != 0 || session_ptr.is_null() {
@@ -767,7 +771,7 @@ impl CompressionSession {
                 ffi::kCFAllocatorDefault,
                 surface.as_ptr().cast::<c_void>(),
                 ptr::null(),
-                &mut pb,
+                &raw mut pb,
             )
         };
         if status != 0 || pb.is_null() {

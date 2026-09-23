@@ -73,7 +73,7 @@ impl HdrMetadataSession {
                 options
                     .as_ref()
                     .map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
-                &mut p,
+                &raw mut p,
             )
         };
         if s != 0 || p.is_null() {

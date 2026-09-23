@@ -21,7 +21,11 @@ pub fn create_cg_image_from_pixel_buffer(
 ) -> Result<*mut c_void, VTError> {
     let mut img: *mut c_void = ptr::null_mut();
     let s = unsafe {
-        ffi::VTCreateCGImageFromCVPixelBuffer(pixel_buffer.as_ptr().cast(), ptr::null(), &mut img)
+        ffi::VTCreateCGImageFromCVPixelBuffer(
+            pixel_buffer.as_ptr().cast(),
+            ptr::null(),
+            &raw mut img,
+        )
     };
     if s != 0 || img.is_null() {
         return Err(VTError::EncodeFailed(s));
@@ -54,7 +58,7 @@ pub fn copy_video_decoder_extension_properties(
 ) -> Result<CFDictionary, VTError> {
     let mut out: ffi::CFDictionaryRef = ptr::null();
     let status =
-        unsafe { ffi::VTCopyVideoDecoderExtensionProperties(format.as_ptr().cast(), &mut out) };
+        unsafe { ffi::VTCopyVideoDecoderExtensionProperties(format.as_ptr().cast(), &raw mut out) };
     if status != 0 || out.is_null() {
         return Err(VTError::ApiFailed {
             api: "VTCopyVideoDecoderExtensionProperties",
@@ -79,7 +83,7 @@ pub fn copy_raw_processor_extension_properties(
 ) -> Result<CFDictionary, VTError> {
     let mut out: ffi::CFDictionaryRef = ptr::null();
     let status =
-        unsafe { ffi::VTCopyRAWProcessorExtensionProperties(format.as_ptr().cast(), &mut out) };
+        unsafe { ffi::VTCopyRAWProcessorExtensionProperties(format.as_ptr().cast(), &raw mut out) };
     if status != 0 || out.is_null() {
         return Err(VTError::ApiFailed {
             api: "VTCopyRAWProcessorExtensionProperties",

@@ -113,8 +113,9 @@ impl PixelTransferSession {
     /// Returns [`VTError::SessionCreateFailed`] if Apple refuses.
     pub fn new() -> Result<Self, VTError> {
         let mut session: ffi::VTPixelTransferSessionRef = ptr::null_mut();
-        let status =
-            unsafe { ffi::VTPixelTransferSessionCreate(ffi::kCFAllocatorDefault, &mut session) };
+        let status = unsafe {
+            ffi::VTPixelTransferSessionCreate(ffi::kCFAllocatorDefault, &raw mut session)
+        };
         if status != 0 || session.is_null() {
             return Err(VTError::SessionCreateFailed(status));
         }
@@ -284,8 +285,9 @@ impl PixelRotationSession {
     /// Returns [`VTError::SessionCreateFailed`] if Apple refuses.
     pub fn new() -> Result<Self, VTError> {
         let mut session: ffi::VTPixelRotationSessionRef = ptr::null_mut();
-        let status =
-            unsafe { ffi::VTPixelRotationSessionCreate(ffi::kCFAllocatorDefault, &mut session) };
+        let status = unsafe {
+            ffi::VTPixelRotationSessionCreate(ffi::kCFAllocatorDefault, &raw mut session)
+        };
         if status != 0 || session.is_null() {
             return Err(VTError::SessionCreateFailed(status));
         }

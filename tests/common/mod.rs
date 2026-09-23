@@ -49,7 +49,7 @@ pub fn make_h264_format_description() -> CMFormatDescription {
             parameter_sets.as_ptr(),
             parameter_set_sizes.as_ptr(),
             4,
-            &mut description,
+            &raw mut description,
         )
     };
     assert_eq!(status, 0, "failed to create synthetic H.264 format");
@@ -73,7 +73,7 @@ pub fn make_two_sample_buffer() -> CMSampleBuffer {
             core::ptr::from_ref(&timing),
             2,
             sample_sizes.as_ptr(),
-            &mut sample_buffer,
+            &raw mut sample_buffer,
         )
     };
     assert_eq!(status, 0, "failed to create synthetic sample buffer");

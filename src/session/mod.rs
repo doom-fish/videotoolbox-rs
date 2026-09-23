@@ -75,7 +75,7 @@ pub(crate) unsafe fn copy_supported_property_dictionary(
     let mut out: ffi::CFDictionaryRef = ptr::null();
     // SAFETY: `VTSessionCopySupportedPropertyDictionary` is a standard Apple SDK function.
     // The session pointer is validated by the caller. The out pointer is properly initialized.
-    let status = unsafe { ffi::VTSessionCopySupportedPropertyDictionary(session, &mut out) };
+    let status = unsafe { ffi::VTSessionCopySupportedPropertyDictionary(session, &raw mut out) };
     if status != 0 || out.is_null() {
         return Err(VTError::ApiFailed {
             api: "VTSessionCopySupportedPropertyDictionary",
@@ -95,7 +95,7 @@ pub(crate) unsafe fn copy_serializable_properties(
     // SAFETY: `VTSessionCopySerializableProperties` is a standard Apple SDK function.
     // The session pointer is validated by the caller. The out pointer is properly initialized.
     let status = unsafe {
-        ffi::VTSessionCopySerializableProperties(session, ffi::kCFAllocatorDefault, &mut out)
+        ffi::VTSessionCopySerializableProperties(session, ffi::kCFAllocatorDefault, &raw mut out)
     };
     if status != 0 || out.is_null() {
         return Err(VTError::ApiFailed {

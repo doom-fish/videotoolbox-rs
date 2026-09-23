@@ -163,8 +163,8 @@ impl DecompressionSession {
                 format_description.as_ptr().cast(),
                 ptr::null(),
                 image_buffer_attributes.map_or(ptr::null(), |d| AsCFType::as_ptr(d).cast()),
-                &record,
-                &mut session,
+                &raw const record,
+                &raw mut session,
             )
         };
         if status != 0 || session.is_null() {
@@ -218,7 +218,7 @@ impl DecompressionSession {
                 decode_flags,
                 frame_options.map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
                 ptr::null_mut(),
-                &mut info_flags,
+                &raw mut info_flags,
             )
         };
         if status == 0 {
@@ -358,7 +358,7 @@ impl DecompressionSession {
     pub fn copy_black_pixel_buffer(&self) -> Result<apple_cf::cv::CVPixelBuffer, VTError> {
         let mut out = ptr::null_mut();
         let status =
-            unsafe { ffi::VTDecompressionSessionCopyBlackPixelBuffer(self.session, &mut out) };
+            unsafe { ffi::VTDecompressionSessionCopyBlackPixelBuffer(self.session, &raw mut out) };
         if status != 0 || out.is_null() {
             return Err(VTError::ApiFailed {
                 api: "VTDecompressionSessionCopyBlackPixelBuffer",

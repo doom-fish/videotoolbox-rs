@@ -95,7 +95,7 @@ impl MotionEstimationSession {
                     .map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
                 width,
                 height,
-                &mut p,
+                &raw mut p,
             )
         };
         if s != 0 || p.is_null() {
@@ -113,7 +113,10 @@ impl MotionEstimationSession {
     pub fn source_pixel_buffer_attributes(&self) -> Result<*const c_void, VTError> {
         let mut attrs: ffi::CFDictionaryRef = ptr::null();
         let s = unsafe {
-            ffi::VTMotionEstimationSessionCopySourcePixelBufferAttributes(self.inner, &mut attrs)
+            ffi::VTMotionEstimationSessionCopySourcePixelBufferAttributes(
+                self.inner,
+                &raw mut attrs,
+            )
         };
         if s != 0 {
             return Err(VTError::EncodeFailed(s));
@@ -170,8 +173,8 @@ impl MotionEstimationSession {
                 reference.as_ptr().cast::<c_void>(),
                 current.as_ptr().cast::<c_void>(),
                 frame_flags,
-                &mut info_flags,
-                &mut out,
+                &raw mut info_flags,
+                &raw mut out,
             )
         };
         if s != 0 || out.is_null() {
