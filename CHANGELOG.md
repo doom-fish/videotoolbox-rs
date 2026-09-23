@@ -1,5 +1,99 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.21.0] - Unreleased
+
+### Fixed
+
+- Binaries that used the crate failed to load on macOS 13 and 14 although the
+  README and Package.swift promise macOS 13: functions and constants from
+  macOS 14, 15 and 26 were strong imports, plain `DecompressionSession::decode`
+  among them. The safe APIs now resolve them at run time and return
+  `VTError::Unsupported { api, minimum }` on older systems; `decode` and
+  `decode_with_options(.., None)` use `VTDecompressionSessionDecodeFrame`
+  (macOS 10.8). The crate's own test and example binaries weak-link
+  VideoToolbox and CoreMedia.
+- `CompressionSession::encode` handed out results through one shared channel,
+  so a caller could receive another caller's frame and a failed
+  `VTCompressionSessionCompleteFrames` left a late frame queued that shifted
+  every later result by one. Every frame now has its own completion, keyed by
+  `sourceFrameRefCon`.
+- `encode_frame_async` could hang forever with the default settings, because
+  nothing forced frames held back for reordering out of the encoder. The first
+  poll that finds its frame still pending now completes frames up to that
+  frame's timestamp.
+- A pending `decode_frame_async` never resolved, and leaked its completion,
+  when VideoToolbox delivered its output or failure to an installed
+  multi-image callback.
+- Sessions that the SDK marks non-Sendable were `Sync`, so safe code could
+  drive one session from several threads at once.
+- `create_cg_image_from_pixel_buffer` and
+  `MotionEstimationSession::source_pixel_buffer_attributes` returned raw +1
+  pointers from safe functions.
+- The Swift bridge bound `VTMotionEstimationSessionEstimateMotionVectors` and
+  `VTRAWProcessingSessionSetParameterChangedHandler` with `@_silgen_name`;
+  motion estimation also borrowed the CF session as the overlay's Swift class
+  and let its output handler write through the caller's out-pointers. Both now
+  use the SDK's C declarations, and results are copied out after the wait.
+- The RAW parameter-change handler was refused on macOS 15.x; it now uses the
+  15.x entry point, `VTRAWProcessingSessionSetParameterChangedHander`.
+- Bridge error codes and the super-resolution model status were converted with
+  trapping `Int32(_:)` conversions.
+- `TaggedBufferGroup::pixel_buffer_at` and `sample_buffer_at` check the index
+  against the group's count.
+- Docs: `EncodedFrame::data` is AVCC-style length-prefixed NAL units (not
+  plain NAL units), the README lists which APIs need which macOS, that
+  sessions are `Send` but not `Sync`, and how raw `ffi` users must weak-link;
+  `COVERAGE*.md` say that the audit counts names of raw declarations.
+
+### Changed
+
+- **BREAKING:** `CompressionSession`, `DecompressionSession`,
+  `RawProcessingSession`, `PixelTransferSession`, `PixelRotationSession`,
+  `FrameSilo` and `MultiPassStorage` are `Send` but no longer `Sync`.
+- **BREAKING:** timestamps are `apple_cf::cm::CMTime` instead of `(i64, i32)`:
+  the `presentation_time` argument of `CompressionSession::encode` and
+  `encode_multi_image`, `EncodedFrame::presentation_time`, and
+  `presentation_time`/`duration` of `DecodedFrame` and
+  `DecodedMultiImageFrame`. Dropped frames report their source timestamp
+  instead of `(0, 0)`.
+- **BREAKING:** `CompressionSession::encode_frame_async` returns
+  `impl Future` and submits the frame when it is called.
+- **BREAKING:** `type_id()` of `TaggedBufferGroup`, `HdrMetadataSession`,
+  `RawProcessingSession` and `MotionEstimationSession` returns
+  `Result<usize, VTError>`.
+- **BREAKING:** `create_cg_image_from_pixel_buffer` returns
+  `apple_cf::cg::CGImage`, and
+  `MotionEstimationSession::source_pixel_buffer_attributes` returns
+  `apple_cf::cf::CFDictionary`.
+- `doom-fish-utils` is a required dependency; in-family requirements are
+  `apple-cf >=0.11, <0.12`, `apple-metal >=0.10, <0.11` and
+  `doom-fish-utils >=0.4.1, <0.5`, and `rust-version` is 1.82 (was 1.76).
+
+### Added
+
+- Encoder specification options on `CompressionSessionBuilder`:
+  `with_hardware_acceleration(HardwareAcceleration::{Preferred, Required,
+  Disabled})`, `with_encoder_id`, `with_low_latency_rate_control` and
+  `with_encoder_gpu(EncoderGpu::{Preferred, Required})`, plus
+  `with_source_pixel_buffer_attributes`.
+- `CompressionSession::encode_with_properties` and `FrameProperties` for
+  per-frame properties such as forced keyframes; `FrameProperties::to_dictionary`
+  builds the dictionary `encode_frame_async` takes.
+- `VTError::Unsupported { api, minimum }`.
+
+### Removed
+
+- **BREAKING:** `DecompressionSession::set_max_output_buffer_depth` and
+  `ffi::kVTDecompressionPropertyKey_MaximumOutputBufferDepth`. No SDK declares
+  that key, so any binary calling the setter failed to link.
+- The unused Swift bridge exports `vtb_motion_session_create` and
+  `vtb_motion_session_release`.
+
 ## [0.20.0] - 2026-09-07
 
 ### Added

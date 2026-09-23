@@ -31,6 +31,13 @@ The full `VideoToolbox` SDK surface is large, but the useful set for real macOS 
 - Type-safe Rust enums for codec types (instead of raw `u32` four-character codes)
 - Builder APIs that map ergonomically to VT's `CFDictionary` property bag
 
+## Installation
+
+```toml
+[dependencies]
+videotoolbox = "0.21"
+```
+
 ## Requirements
 
 - macOS 13.0+
@@ -47,7 +54,7 @@ APIs that need a newer macOS are looked up at run time, so binaries still load o
 
 The raw declarations in `videotoolbox::ffi` are ordinary imports. If you call one that is newer than your deployment target directly, link with `-weak_framework VideoToolbox` (and `CoreMedia`) and check availability first, or use the safe wrappers.
 
-Sessions are `Send` but not `Sync`: VideoToolbox marks its session types non-Sendable and documents no concurrent use, so move a session to the thread that uses it or put it behind a `Mutex`.
+Sessions are `Send` but not `Sync`: `VideoToolbox` marks its session types non-Sendable and documents no concurrent use, so move a session to the thread that uses it or put it behind a `Mutex`.
 
 Encoded H.264/HEVC frames (`EncodedFrame::data`) are AVCC-style length-prefixed NAL units without start codes; the parameter sets are in the sample buffer's format description (`CMFormatDescription::video_parameter_sets` in `apple-cf`).
 
