@@ -9,9 +9,9 @@ use core::ptr;
 use std::sync::{Arc, Mutex};
 
 use apple_cf::cf::{AsCFType, CFDictionary, CFType};
+use apple_cf::cm::CMTime;
 #[cfg(feature = "async")]
 use doom_fish_utils::completion::AsyncCompletion;
-#[cfg(feature = "async")]
 use doom_fish_utils::panic_safe::catch_user_panic;
 
 use crate::error::VTError;
@@ -25,9 +25,9 @@ pub struct DecodedFrame {
     /// when the decoder dropped or skipped a frame.
     pub image_buffer: Option<apple_cf::cv::CVPixelBuffer>,
     /// Presentation timestamp of the source sample buffer.
-    pub presentation_time: (i64, i32),
+    pub presentation_time: CMTime,
     /// Presentation duration of the decoded frame.
-    pub duration: (i64, i32),
+    pub duration: CMTime,
     /// Decoder hint flags (asynchronous / image-buffer-modifiable / etc.).
     pub info_flags: ffi::VTDecodeInfoFlags,
     /// Apple's decoder status code. 0 indicates success.
@@ -39,9 +39,9 @@ pub struct DecodedMultiImageFrame {
     /// Multi-image output (for example left/right eye pixel buffers).
     pub tagged_buffer_group: Option<TaggedBufferGroup>,
     /// Presentation timestamp of the source sample buffer.
-    pub presentation_time: (i64, i32),
+    pub presentation_time: CMTime,
     /// Presentation duration of the decoded frame.
-    pub duration: (i64, i32),
+    pub duration: CMTime,
     /// Decoder hint flags (asynchronous / image-buffer-modifiable / etc.).
     pub info_flags: ffi::VTDecodeInfoFlags,
     /// Apple's decoder status code. 0 indicates success.
@@ -668,8 +668,8 @@ unsafe extern "C" fn decode_trampoline(
 
     let frame = DecodedFrame {
         image_buffer: image,
-        presentation_time: (pts.value, pts.timescale),
-        duration: (duration.value, duration.timescale),
+        presentation_time: pts,
+        duration,
         info_flags,
         status,
     };
@@ -679,20 +679,28 @@ unsafe extern "C" fn decode_trampoline(
     };
     // The user closure may panic. Unwinding across this `extern "C"` boundary
     // back into VideoToolbox is undefined behaviour, so guard the invocation.
-    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+    catch_user_panic("videotoolbox::decompression::decode_callback", || {
         guard(frame);
-    }));
+    });
 }
 
 unsafe extern "C" fn decode_multi_image_trampoline(
     output_ref_con: *mut c_void,
-    _source_frame_ref_con: *mut c_void,
+    source_frame_ref_con: *mut c_void,
     status: ffi::OSStatus,
     info_flags: ffi::VTDecodeInfoFlags,
     tagged_buffer_group: ffi::CMTaggedBufferGroupRef,
     pts: ffi::CMTime,
     duration: ffi::CMTime,
 ) {
+    #[cfg(not(feature = "async"))]
+    let _ = source_frame_ref_con;
+    #[cfg(feature = "async")]
+    if !source_frame_ref_con.is_null() {
+        complete_async_decode(source_frame_ref_con, status, ptr::null_mut());
+        return;
+    }
+
     if output_ref_con.is_null() {
         return;
     }
@@ -702,8 +710,8 @@ unsafe extern "C" fn decode_multi_image_trampoline(
 
     let frame = DecodedMultiImageFrame {
         tagged_buffer_group: unsafe { TaggedBufferGroup::from_raw_retained(tagged_buffer_group) },
-        presentation_time: (pts.value, pts.timescale),
-        duration: (duration.value, duration.timescale),
+        presentation_time: pts,
+        duration,
         info_flags,
         status,
     };
@@ -716,7 +724,110 @@ unsafe extern "C" fn decode_multi_image_trampoline(
     };
     // The user closure may panic; unwinding across this `extern "C"` boundary
     // back into VideoToolbox is undefined behaviour, so guard the invocation.
-    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+    catch_user_panic("videotoolbox::decompression::multi_image_callback", || {
         callback(frame);
-    }));
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use core::ptr;
+    use std::sync::{Arc, Mutex};
+
+    use apple_cf::cm::CMTime;
+
+    use super::{decode_multi_image_trampoline, CallbackState};
+
+    fn state() -> Arc<CallbackState> {
+        Arc::new(CallbackState {
+            callback: Mutex::new(Box::new(|_| {})),
+            multi_image_callback: Mutex::new(None),
+        })
+    }
+
+    #[cfg(feature = "async")]
+    fn deliver_to_pending_decode(status: i32) -> Result<apple_cf::cv::CVImageBuffer, String> {
+        use doom_fish_utils::completion::AsyncCompletion;
+
+        let state = state();
+        let (future, context) = AsyncCompletion::<apple_cf::cv::CVImageBuffer>::create();
+        unsafe {
+            decode_multi_image_trampoline(
+                Arc::as_ptr(&state).cast_mut().cast(),
+                context,
+                status,
+                0,
+                ptr::null_mut(),
+                CMTime::new(1, 30),
+                CMTime::new(1, 30),
+            );
+        }
+        pollster::block_on(future)
+    }
+
+    #[cfg(feature = "async")]
+    #[test]
+    fn multi_image_failure_resolves_the_pending_async_decode() {
+        assert_eq!(
+            deliver_to_pending_decode(-12909).err().as_deref(),
+            Some("-12909")
+        );
+    }
+
+    #[cfg(feature = "async")]
+    #[test]
+    fn multi_image_output_without_an_image_buffer_resolves_the_async_decode() {
+        assert_eq!(deliver_to_pending_decode(0).err().as_deref(), Some("-1"));
+    }
+
+    #[test]
+    fn multi_image_output_without_a_frame_context_reaches_the_callback() {
+        let received = Arc::new(Mutex::new(Vec::new()));
+        let sink = Arc::clone(&received);
+        let state = state();
+        *state.multi_image_callback.lock().expect("unpoisoned") =
+            Some(Box::new(move |frame: super::DecodedMultiImageFrame| {
+                sink.lock().expect("unpoisoned").push((
+                    frame.status,
+                    frame.presentation_time,
+                    frame.duration,
+                ));
+            }));
+
+        unsafe {
+            decode_multi_image_trampoline(
+                Arc::as_ptr(&state).cast_mut().cast(),
+                ptr::null_mut(),
+                -12909,
+                0,
+                ptr::null_mut(),
+                CMTime::new(3, 30),
+                CMTime::new(1, 30),
+            );
+        }
+
+        assert_eq!(
+            *received.lock().expect("unpoisoned"),
+            [(-12909, CMTime::new(3, 30), CMTime::new(1, 30))]
+        );
+    }
+
+    #[test]
+    fn panicking_multi_image_callback_is_contained() {
+        let state = state();
+        *state.multi_image_callback.lock().expect("unpoisoned") =
+            Some(Box::new(|_| panic!("callback panic")));
+
+        unsafe {
+            decode_multi_image_trampoline(
+                Arc::as_ptr(&state).cast_mut().cast(),
+                ptr::null_mut(),
+                0,
+                0,
+                ptr::null_mut(),
+                CMTime::new(0, 30),
+                CMTime::new(1, 30),
+            );
+        }
+    }
 }

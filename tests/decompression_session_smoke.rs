@@ -1,5 +1,6 @@
 mod common;
 
+use apple_cf::cm::CMTime;
 use common::{encode_h264_test_frame, H264_AVC1};
 use std::{sync::mpsc, time::Duration};
 use videotoolbox::{DecompressionSession, VTError};
@@ -39,7 +40,7 @@ fn decompression_session_round_trips_encoded_h264() -> Result<(), VTError> {
         .recv_timeout(Duration::from_secs(5))
         .expect("decoder callback timed out");
     assert_eq!(frame.status, 0, "decoder callback should report success");
-    assert_eq!(frame.presentation_time, (0, 30));
+    assert_eq!(frame.presentation_time, CMTime::new(0, 30));
 
     let image_buffer = frame
         .image_buffer
