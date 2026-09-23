@@ -7,6 +7,7 @@
 use apple_cf::cm::CMSampleBuffer;
 use apple_cf::cv::CVPixelBuffer;
 
+use crate::error::VTError;
 use crate::ffi;
 
 /// Owned `CMTaggedBufferGroupRef`.
@@ -19,9 +20,10 @@ unsafe impl Sync for TaggedBufferGroup {}
 
 impl TaggedBufferGroup {
     /// CoreFoundation type identifier for `CMTaggedBufferGroup`.
-    #[must_use]
-    pub fn type_id() -> usize {
-        unsafe { ffi::CMTaggedBufferGroupGetTypeID() }
+    #[allow(clippy::missing_errors_doc)]
+    pub fn type_id() -> Result<usize, VTError> {
+        let type_id = ffi::dynamic::CMTaggedBufferGroupGetTypeID()?;
+        Ok(unsafe { type_id() })
     }
 
     /// Adopt a retained `CMTaggedBufferGroupRef`.
@@ -62,7 +64,9 @@ impl TaggedBufferGroup {
     /// Number of buffers in the group.
     #[must_use]
     pub fn len(&self) -> usize {
-        usize::try_from(unsafe { ffi::CMTaggedBufferGroupGetCount(self.inner) }).unwrap_or(0)
+        ffi::dynamic::CMTaggedBufferGroupGetCount().map_or(0, |count| {
+            usize::try_from(unsafe { count(self.inner) }).unwrap_or(0)
+        })
     }
 
     /// Whether the group is empty.
@@ -74,8 +78,12 @@ impl TaggedBufferGroup {
     /// Copy the pixel buffer at `index`, if that entry stores a `CVPixelBuffer`.
     #[must_use]
     pub fn pixel_buffer_at(&self, index: usize) -> Option<CVPixelBuffer> {
+        if index >= self.len() {
+            return None;
+        }
         let index = isize::try_from(index).ok()?;
-        let ptr = unsafe { ffi::CMTaggedBufferGroupGetCVPixelBufferAtIndex(self.inner, index) };
+        let pixel_buffer_at = ffi::dynamic::CMTaggedBufferGroupGetCVPixelBufferAtIndex().ok()?;
+        let ptr = unsafe { pixel_buffer_at(self.inner, index) };
         if ptr.is_null() {
             None
         } else {
@@ -86,8 +94,12 @@ impl TaggedBufferGroup {
     /// Copy the sample buffer at `index`, if that entry stores a `CMSampleBuffer`.
     #[must_use]
     pub fn sample_buffer_at(&self, index: usize) -> Option<CMSampleBuffer> {
+        if index >= self.len() {
+            return None;
+        }
         let index = isize::try_from(index).ok()?;
-        let ptr = unsafe { ffi::CMTaggedBufferGroupGetCMSampleBufferAtIndex(self.inner, index) };
+        let sample_buffer_at = ffi::dynamic::CMTaggedBufferGroupGetCMSampleBufferAtIndex().ok()?;
+        let ptr = unsafe { sample_buffer_at(self.inner, index) };
         unsafe { CMSampleBuffer::from_raw_borrowed(ptr.cast()) }
     }
 }

@@ -18,11 +18,11 @@ pub enum HdrMetadataFormat {
 }
 
 impl HdrMetadataFormat {
-    fn as_cf_string(self) -> ffi::VTHDRPerFrameMetadataGenerationHDRFormatType {
+    fn as_cf_string(self) -> Result<ffi::VTHDRPerFrameMetadataGenerationHDRFormatType, VTError> {
         match self {
-            Self::DolbyVision => unsafe {
-                ffi::kVTHDRPerFrameMetadataGenerationHDRFormatType_DolbyVision
-            },
+            Self::DolbyVision => {
+                ffi::dynamic::kVTHDRPerFrameMetadataGenerationHDRFormatType_DolbyVision()
+            }
         }
     }
 }
@@ -39,9 +39,10 @@ crate::utils::retained::vt_retained!(HdrMetadataSession, field = inner, release 
 
 impl HdrMetadataSession {
     /// CoreFoundation type identifier for `VTHDRPerFrameMetadataGenerationSession`.
-    #[must_use]
-    pub fn type_id() -> usize {
-        unsafe { ffi::VTHDRPerFrameMetadataGenerationSessionGetTypeID() }
+    #[allow(clippy::missing_errors_doc)]
+    pub fn type_id() -> Result<usize, VTError> {
+        let type_id = ffi::dynamic::VTHDRPerFrameMetadataGenerationSessionGetTypeID()?;
+        Ok(unsafe { type_id() })
     }
 
     /// Create a new HDR-metadata generation session configured for Dolby Vision.
@@ -64,10 +65,11 @@ impl HdrMetadataSession {
     ///
     /// Returns [`VTError::SessionCreateFailed`] on failure.
     pub fn new_with_formats(fps: f32, hdr_formats: &[HdrMetadataFormat]) -> Result<Self, VTError> {
-        let options = build_hdr_options(hdr_formats);
+        let create = ffi::dynamic::VTHDRPerFrameMetadataGenerationSessionCreate()?;
+        let options = build_hdr_options(hdr_formats)?;
         let mut p: ffi::VTHDRPerFrameMetadataGenerationSessionRef = ptr::null_mut();
         let s = unsafe {
-            ffi::VTHDRPerFrameMetadataGenerationSessionCreate(
+            create(
                 ffi::kCFAllocatorDefault,
                 fps,
                 options
@@ -95,11 +97,12 @@ impl HdrMetadataSession {
         pixel_buffer: &CVPixelBuffer,
         scene_change: bool,
     ) -> Result<(), VTError> {
+        let attach_metadata = ffi::dynamic::VTHDRPerFrameMetadataGenerationSessionAttachMetadata()?;
         let s = unsafe {
-            ffi::VTHDRPerFrameMetadataGenerationSessionAttachMetadata(
+            attach_metadata(
                 self.inner,
                 pixel_buffer.as_ptr().cast(),
-                scene_change,
+                ffi::Boolean::from(scene_change),
             )
         };
         if s == 0 {
@@ -116,27 +119,31 @@ impl HdrMetadataSession {
     }
 }
 
-fn build_hdr_options(hdr_formats: &[HdrMetadataFormat]) -> Option<CFDictionary> {
+fn build_hdr_options(hdr_formats: &[HdrMetadataFormat]) -> Result<Option<CFDictionary>, VTError> {
     if hdr_formats.is_empty() {
-        return None;
+        return Ok(None);
     }
 
-    let formats: Vec<CFType> = hdr_formats
+    let formats = hdr_formats
         .iter()
-        .map(|format| retained_cf_type(format.as_cf_string().cast_mut()))
-        .collect();
+        .map(|format| {
+            format
+                .as_cf_string()
+                .map(|value| retained_cf_type(value.cast_mut()))
+        })
+        .collect::<Result<Vec<CFType>, VTError>>()?;
     let format_refs: Vec<&dyn AsCFType> = formats
         .iter()
         .map(|format| format as &dyn AsCFType)
         .collect();
     let array = CFArray::from_values(&format_refs);
-    let key = retained_cf_type(unsafe {
-        ffi::kVTHDRPerFrameMetadataGenerationOptionsKey_HDRFormats.cast_mut()
-    });
-    Some(CFDictionary::from_pairs(&[(
+    let key = retained_cf_type(
+        ffi::dynamic::kVTHDRPerFrameMetadataGenerationOptionsKey_HDRFormats()?.cast_mut(),
+    );
+    Ok(Some(CFDictionary::from_pairs(&[(
         &key as &dyn AsCFType,
         &array as &dyn AsCFType,
-    )]))
+    )])))
 }
 
 fn retained_cf_type<T>(raw: *mut T) -> CFType {

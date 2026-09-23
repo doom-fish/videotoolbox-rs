@@ -20,6 +20,8 @@ fn main() {
     println!("cargo:rustc-link-lib=framework=CoreMedia");
     println!("cargo:rustc-link-lib=framework=CoreVideo");
     println!("cargo:rustc-link-lib=framework=CoreFoundation");
+    println!("cargo:rustc-link-arg=-Wl,-weak_framework,VideoToolbox");
+    println!("cargo:rustc-link-arg=-Wl,-weak_framework,CoreMedia");
 
     if env::var("CARGO_FEATURE_FRAME_PROCESSOR").is_ok() {
         println!("cargo:rustc-link-lib=framework=Foundation");

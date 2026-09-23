@@ -98,9 +98,8 @@ impl DecompressionSession {
     /// decode support.
     #[must_use]
     pub fn is_stereo_mvhevc_decode_supported() -> bool {
-        // SAFETY: `VTIsStereoMVHEVCDecodeSupported` is a standard query function
-        // that performs no I/O and has no side effects.
-        unsafe { ffi::VTIsStereoMVHEVCDecodeSupported() != 0 }
+        ffi::dynamic::VTIsStereoMVHEVCDecodeSupported()
+            .is_ok_and(|is_supported| unsafe { is_supported() } != 0)
     }
 
     /// Open a decompression session for the given format description.
@@ -202,8 +201,10 @@ impl DecompressionSession {
     ///
     /// # Errors
     ///
-    /// Returns [`VTError::EncoderCallback`] wrapping the raw `OSStatus`
-    /// if `VTDecompressionSessionDecodeFrameWithOptions` rejects the sample buffer.
+    /// Returns [`VTError::Unsupported`] if `frame_options` is set before
+    /// macOS 15.0 (`VTDecompressionSessionDecodeFrameWithOptions`), or
+    /// [`VTError::EncoderCallback`] wrapping the raw `OSStatus` if the decoder
+    /// rejects the sample buffer.
     pub fn decode_with_options(
         &self,
         sample_buffer: &apple_cf::cm::CMSampleBuffer,
@@ -211,15 +212,29 @@ impl DecompressionSession {
         frame_options: Option<&CFDictionary>,
     ) -> Result<ffi::VTDecodeInfoFlags, VTError> {
         let mut info_flags: ffi::VTDecodeInfoFlags = 0;
-        let status = unsafe {
-            ffi::VTDecompressionSessionDecodeFrameWithOptions(
-                self.session,
-                sample_buffer.as_ptr().cast(),
-                decode_flags,
-                frame_options.map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
-                ptr::null_mut(),
-                &raw mut info_flags,
-            )
+        let status = match frame_options {
+            None => unsafe {
+                ffi::VTDecompressionSessionDecodeFrame(
+                    self.session,
+                    sample_buffer.as_ptr().cast(),
+                    decode_flags,
+                    ptr::null_mut(),
+                    &raw mut info_flags,
+                )
+            },
+            Some(frame_options) => {
+                let decode = ffi::dynamic::VTDecompressionSessionDecodeFrameWithOptions()?;
+                unsafe {
+                    decode(
+                        self.session,
+                        sample_buffer.as_ptr().cast(),
+                        decode_flags,
+                        frame_options.as_ptr().cast_const().cast(),
+                        ptr::null_mut(),
+                        &raw mut info_flags,
+                    )
+                }
+            }
         };
         if status == 0 {
             Ok(info_flags)
@@ -278,26 +293,24 @@ impl DecompressionSession {
     ///
     /// # Errors
     ///
-    /// Returns [`VTError::ApiFailed`] if the decoder rejects the callback.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the callback mutex is poisoned.
+    /// Returns [`VTError::Unsupported`] before macOS 14.0, or
+    /// [`VTError::ApiFailed`] if the decoder rejects the callback.
     pub fn set_multi_image_callback<F>(&self, callback: F) -> Result<(), VTError>
     where
         F: FnMut(DecodedMultiImageFrame) + Send + 'static,
     {
+        let set_callback = ffi::dynamic::VTDecompressionSessionSetMultiImageCallback()?;
         {
             let mut slot = self
                 .state
                 .multi_image_callback
                 .lock()
-                .expect("decoder multi-image callback mutex poisoned");
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             *slot = Some(Box::new(callback));
         }
 
         let status = unsafe {
-            ffi::VTDecompressionSessionSetMultiImageCallback(
+            set_callback(
                 self.session,
                 decode_multi_image_trampoline,
                 Arc::as_ptr(&self.state).cast::<c_void>().cast_mut(),
@@ -308,7 +321,7 @@ impl DecompressionSession {
                 .state
                 .multi_image_callback
                 .lock()
-                .expect("decoder multi-image callback mutex poisoned");
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             *slot = None;
             drop(slot);
             return Err(VTError::ApiFailed {

@@ -7,6 +7,8 @@
 
 #![allow(missing_docs, non_camel_case_types, non_upper_case_globals)]
 
+pub(crate) mod dynamic;
+
 use core::ffi::{c_char, c_uint, c_void};
 
 // ---- type aliases that match the C headers ----

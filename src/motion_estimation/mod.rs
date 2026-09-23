@@ -49,18 +49,23 @@ pub struct MotionEstimationSession {
 unsafe impl Send for MotionEstimationSession {}
 unsafe impl Sync for MotionEstimationSession {}
 
-crate::utils::retained::vt_retained!(
-    MotionEstimationSession,
-    field = inner,
-    invalidate = ffi::VTMotionEstimationSessionInvalidate,
-    release = ffi::CFRelease,
-);
+impl Drop for MotionEstimationSession {
+    fn drop(&mut self) {
+        if !self.inner.is_null() {
+            if let Ok(invalidate) = ffi::dynamic::VTMotionEstimationSessionInvalidate() {
+                unsafe { invalidate(self.inner) };
+            }
+            unsafe { ffi::CFRelease(self.inner.cast()) };
+        }
+    }
+}
 
 impl MotionEstimationSession {
     /// CoreFoundation type identifier for `VTMotionEstimationSession`.
-    #[must_use]
-    pub fn type_id() -> usize {
-        unsafe { ffi::VTMotionEstimationSessionGetTypeID() }
+    #[allow(clippy::missing_errors_doc)]
+    pub fn type_id() -> Result<usize, VTError> {
+        let type_id = ffi::dynamic::VTMotionEstimationSessionGetTypeID()?;
+        Ok(unsafe { type_id() })
     }
 
     /// Create a motion-estimation session that accepts pixel buffers
@@ -68,8 +73,8 @@ impl MotionEstimationSession {
     ///
     /// # Errors
     ///
-    /// Returns [`VTError::SessionCreateFailed`] on failure or when
-    /// running on macOS < 26.
+    /// Returns [`VTError::Unsupported`] before macOS 26.0 or
+    /// [`VTError::SessionCreateFailed`] on failure.
     pub fn new(width: u32, height: u32) -> Result<Self, VTError> {
         Self::new_with_options(width, height, &MotionEstimationSessionOptions::default())
     }
@@ -79,16 +84,18 @@ impl MotionEstimationSession {
     /// # Errors
     ///
     /// Returns [`VTError::InvalidArgument`] when `motion_vector_size` is not 4 or 16,
+    /// [`VTError::Unsupported`] before macOS 26.0,
     /// or [`VTError::SessionCreateFailed`] when the framework rejects the session.
     pub fn new_with_options(
         width: u32,
         height: u32,
         options: &MotionEstimationSessionOptions,
     ) -> Result<Self, VTError> {
+        let create = ffi::dynamic::VTMotionEstimationSessionCreate()?;
         let creation_options = build_creation_options(options)?;
         let mut p: ffi::VTMotionEstimationSessionRef = ptr::null_mut();
         let s = unsafe {
-            ffi::VTMotionEstimationSessionCreate(
+            create(
                 ffi::kCFAllocatorDefault,
                 creation_options
                     .as_ref()
@@ -130,7 +137,8 @@ impl MotionEstimationSession {
     ///
     /// Returns [`VTError::EncodeFailed`] on `OSStatus` failure.
     pub fn complete_frames(&self) -> Result<(), VTError> {
-        let s = unsafe { ffi::VTMotionEstimationSessionCompleteFrames(self.inner) };
+        let complete_frames = ffi::dynamic::VTMotionEstimationSessionCompleteFrames()?;
+        let s = unsafe { complete_frames(self.inner) };
         if s == 0 {
             Ok(())
         } else {
@@ -210,21 +218,21 @@ fn build_creation_options(
     let mut values = Vec::new();
 
     if let Some(size) = options.motion_vector_size {
-        keys.push(retained_cf_type(unsafe {
-            ffi::kVTMotionEstimationSessionCreationOption_MotionVectorSize.cast_mut()
-        }));
+        keys.push(retained_cf_type(
+            ffi::dynamic::kVTMotionEstimationSessionCreationOption_MotionVectorSize()?.cast_mut(),
+        ));
         values.push(CFNumber::from_u64(u64::from(size)).to_cf_type());
     }
     if options.use_multi_pass_search {
-        keys.push(retained_cf_type(unsafe {
-            ffi::kVTMotionEstimationSessionCreationOption_UseMultiPassSearch.cast_mut()
-        }));
+        keys.push(retained_cf_type(
+            ffi::dynamic::kVTMotionEstimationSessionCreationOption_UseMultiPassSearch()?.cast_mut(),
+        ));
         values.push(retained_cf_type(unsafe { ffi::kCFBooleanTrue.cast_mut() }));
     }
     if let Some(label) = &options.label {
-        keys.push(retained_cf_type(unsafe {
-            ffi::kVTMotionEstimationSessionCreationOption_Label.cast_mut()
-        }));
+        keys.push(retained_cf_type(
+            ffi::dynamic::kVTMotionEstimationSessionCreationOption_Label()?.cast_mut(),
+        ));
         values.push(CFString::new(label).to_cf_type());
     }
 

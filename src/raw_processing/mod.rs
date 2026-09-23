@@ -160,10 +160,10 @@ impl Drop for RawProcessingSession {
                     None,
                 )
             });
-            unsafe {
-                ffi::VTRAWProcessingSessionInvalidate(self.inner);
-                ffi::CFRelease(self.inner.cast());
+            if let Ok(invalidate) = ffi::dynamic::VTRAWProcessingSessionInvalidate() {
+                unsafe { invalidate(self.inner) };
             }
+            unsafe { ffi::CFRelease(self.inner.cast()) };
             self.inner = ptr::null_mut();
         }
     }
@@ -171,20 +171,23 @@ impl Drop for RawProcessingSession {
 
 impl RawProcessingSession {
     /// CoreFoundation type identifier for `VTRAWProcessingSession`.
-    #[must_use]
-    pub fn type_id() -> usize {
-        unsafe { ffi::VTRAWProcessingSessionGetTypeID() }
+    #[allow(clippy::missing_errors_doc)]
+    pub fn type_id() -> Result<usize, VTError> {
+        let type_id = ffi::dynamic::VTRAWProcessingSessionGetTypeID()?;
+        Ok(unsafe { type_id() })
     }
 
     /// Create a RAW processing session for the given video format.
     ///
     /// # Errors
     ///
-    /// Returns [`VTError::SessionCreateFailed`] on failure.
+    /// Returns [`VTError::Unsupported`] before macOS 15.0 or
+    /// [`VTError::SessionCreateFailed`] on failure.
     pub fn new(format: &CMFormatDescription) -> Result<Self, VTError> {
+        let create = ffi::dynamic::VTRAWProcessingSessionCreate()?;
         let mut p: ffi::VTRAWProcessingSessionRef = ptr::null_mut();
         let s = unsafe {
-            ffi::VTRAWProcessingSessionCreate(
+            create(
                 ffi::kCFAllocatorDefault,
                 format.as_ptr().cast::<c_void>(),
                 ptr::null(),
@@ -209,7 +212,8 @@ impl RawProcessingSession {
     ///
     /// Returns [`VTError::EncodeFailed`] on `OSStatus` failure.
     pub fn complete_frames(&self) -> Result<(), VTError> {
-        let s = unsafe { ffi::VTRAWProcessingSessionCompleteFrames(self.inner) };
+        let complete_frames = ffi::dynamic::VTRAWProcessingSessionCompleteFrames()?;
+        let s = unsafe { complete_frames(self.inner) };
         if s == 0 {
             Ok(())
         } else {
@@ -236,7 +240,8 @@ impl RawProcessingSession {
     ///
     /// Returns [`VTError::ApiFailed`] if `VTSessionCopyProperty` fails.
     pub fn metadata_for_sidecar_file(&self) -> Result<Option<CFType>, VTError> {
-        unsafe { self.copy_property(ffi::kVTRAWProcessingPropertyKey_MetadataForSidecarFile) }
+        let key = ffi::dynamic::kVTRAWProcessingPropertyKey_MetadataForSidecarFile()?;
+        unsafe { self.copy_property(key) }
     }
 
     /// Copy the requested Metal-device registry ID, when the active RAW processor exposes it.
@@ -245,7 +250,8 @@ impl RawProcessingSession {
     ///
     /// Returns [`VTError::ApiFailed`] if `VTSessionCopyProperty` fails.
     pub fn metal_device_registry_id(&self) -> Result<Option<CFType>, VTError> {
-        unsafe { self.copy_property(ffi::kVTRAWProcessingPropertyKey_MetalDeviceRegistryID) }
+        let key = ffi::dynamic::kVTRAWProcessingPropertyKey_MetalDeviceRegistryID()?;
+        unsafe { self.copy_property(key) }
     }
 
     /// Copy the output color-attachment dictionary, when the active RAW processor exposes it.
@@ -254,7 +260,8 @@ impl RawProcessingSession {
     ///
     /// Returns [`VTError::ApiFailed`] if `VTSessionCopyProperty` fails.
     pub fn output_color_attachments(&self) -> Result<Option<CFType>, VTError> {
-        unsafe { self.copy_property(ffi::kVTRAWProcessingPropertyKey_OutputColorAttachments) }
+        let key = ffi::dynamic::kVTRAWProcessingPropertyKey_OutputColorAttachments()?;
+        unsafe { self.copy_property(key) }
     }
 
     /// Copy the array of processing parameters this RAW codec
@@ -264,10 +271,9 @@ impl RawProcessingSession {
     ///
     /// Returns [`VTError::EncodeFailed`] on `OSStatus` failure.
     pub fn parameters(&self) -> Result<Vec<RawProcessingParameter>, VTError> {
+        let copy_parameters = ffi::dynamic::VTRAWProcessingSessionCopyProcessingParameters()?;
         let mut arr: ffi::CFArrayRef = ptr::null();
-        let s = unsafe {
-            ffi::VTRAWProcessingSessionCopyProcessingParameters(self.inner, &raw mut arr)
-        };
+        let s = unsafe { copy_parameters(self.inner, &raw mut arr) };
         if s != 0 || arr.is_null() {
             return Err(VTError::EncodeFailed(s));
         }
@@ -289,7 +295,8 @@ impl RawProcessingSession {
     ///
     /// `params` must be a valid `CFDictionaryRef`.
     pub unsafe fn set_parameters_raw(&self, params: ffi::CFDictionaryRef) -> Result<(), VTError> {
-        let s = unsafe { ffi::VTRAWProcessingSessionSetProcessingParameters(self.inner, params) };
+        let set_parameters = ffi::dynamic::VTRAWProcessingSessionSetProcessingParameters()?;
+        let s = unsafe { set_parameters(self.inner, params) };
         if s == 0 {
             Ok(())
         } else {
@@ -519,61 +526,61 @@ impl RawProcessingParameter {
     /// [`RawProcessingSession::set_parameters_raw`].
     #[must_use]
     pub fn key(&self) -> Option<String> {
-        unsafe { self.cf_string(ffi::kVTRAWProcessingParameter_Key) }
+        unsafe { self.cf_string(ffi::dynamic::kVTRAWProcessingParameter_Key().ok()?) }
     }
 
     /// Localised, human-readable name.
     #[must_use]
     pub fn name(&self) -> Option<String> {
-        unsafe { self.cf_string(ffi::kVTRAWProcessingParameter_Name) }
+        unsafe { self.cf_string(ffi::dynamic::kVTRAWProcessingParameter_Name().ok()?) }
     }
 
     /// Long-form description.
     #[must_use]
     pub fn description(&self) -> Option<String> {
-        unsafe { self.cf_string(ffi::kVTRAWProcessingParameter_Description) }
+        unsafe { self.cf_string(ffi::dynamic::kVTRAWProcessingParameter_Description().ok()?) }
     }
 
     /// `kVTRAWProcessingParameterValueType_*` discriminator.
     #[must_use]
     pub fn value_type(&self) -> Option<String> {
-        unsafe { self.cf_string(ffi::kVTRAWProcessingParameter_ValueType) }
+        unsafe { self.cf_string(ffi::dynamic::kVTRAWProcessingParameter_ValueType().ok()?) }
     }
 
     /// Current value (numeric).
     #[must_use]
     pub fn current_value(&self) -> Option<f64> {
-        unsafe { self.cf_f64(ffi::kVTRAWProcessingParameter_CurrentValue) }
+        unsafe { self.cf_f64(ffi::dynamic::kVTRAWProcessingParameter_CurrentValue().ok()?) }
     }
 
     /// Minimum value (numeric).
     #[must_use]
     pub fn minimum_value(&self) -> Option<f64> {
-        unsafe { self.cf_f64(ffi::kVTRAWProcessingParameter_MinimumValue) }
+        unsafe { self.cf_f64(ffi::dynamic::kVTRAWProcessingParameter_MinimumValue().ok()?) }
     }
 
     /// Maximum value (numeric).
     #[must_use]
     pub fn maximum_value(&self) -> Option<f64> {
-        unsafe { self.cf_f64(ffi::kVTRAWProcessingParameter_MaximumValue) }
+        unsafe { self.cf_f64(ffi::dynamic::kVTRAWProcessingParameter_MaximumValue().ok()?) }
     }
 
     /// Initial/default value.
     #[must_use]
     pub fn initial_value(&self) -> Option<f64> {
-        unsafe { self.cf_f64(ffi::kVTRAWProcessingParameter_InitialValue) }
+        unsafe { self.cf_f64(ffi::dynamic::kVTRAWProcessingParameter_InitialValue().ok()?) }
     }
 
     /// Camera-captured value.
     #[must_use]
     pub fn camera_value(&self) -> Option<f64> {
-        unsafe { self.cf_f64(ffi::kVTRAWProcessingParameter_CameraValue) }
+        unsafe { self.cf_f64(ffi::dynamic::kVTRAWProcessingParameter_CameraValue().ok()?) }
     }
 
     /// Neutral (no-op) value.
     #[must_use]
     pub fn neutral_value(&self) -> Option<f64> {
-        unsafe { self.cf_f64(ffi::kVTRAWProcessingParameter_NeutralValue) }
+        unsafe { self.cf_f64(ffi::dynamic::kVTRAWProcessingParameter_NeutralValue().ok()?) }
     }
 
     unsafe fn cf_string(&self, key: ffi::CFStringRef) -> Option<String> {

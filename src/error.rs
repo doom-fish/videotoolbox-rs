@@ -38,6 +38,10 @@ pub enum VTError {
     TimedOut { operation: &'static str },
     /// An invalid argument was supplied (e.g. zero width).
     InvalidArgument(String),
+    Unsupported {
+        api: &'static str,
+        minimum: &'static str,
+    },
 }
 
 impl VTError {
@@ -55,7 +59,8 @@ impl VTError {
             Self::PixelBufferCreateFailed(_)
             | Self::UnexpectedSampleCount { .. }
             | Self::TimedOut { .. }
-            | Self::InvalidArgument(_) => None,
+            | Self::InvalidArgument(_)
+            | Self::Unsupported { .. } => None,
         }
     }
 }
@@ -87,6 +92,9 @@ impl fmt::Display for VTError {
             ),
             Self::TimedOut { operation } => write!(f, "{operation} timed out"),
             Self::InvalidArgument(m) => write!(f, "invalid argument: {m}"),
+            Self::Unsupported { api, minimum } => {
+                write!(f, "{api} requires macOS {minimum} or later")
+            }
         }
     }
 }
@@ -137,6 +145,14 @@ mod tests {
         assert_eq!(
             VTError::TimedOut {
                 operation: "RAW frame processing",
+            }
+            .status(),
+            None
+        );
+        assert_eq!(
+            VTError::Unsupported {
+                api: "VTDecompressionSessionDecodeFrameWithOptions",
+                minimum: "15.0",
             }
             .status(),
             None
@@ -192,6 +208,14 @@ mod tests {
             }
             .to_string(),
             "RAW frame processing timed out"
+        );
+        assert_eq!(
+            VTError::Unsupported {
+                api: "VTDecompressionSessionDecodeFrameWithOptions",
+                minimum: "15.0",
+            }
+            .to_string(),
+            "VTDecompressionSessionDecodeFrameWithOptions requires macOS 15.0 or later"
         );
     }
 }

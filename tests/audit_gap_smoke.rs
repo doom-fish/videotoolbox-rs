@@ -298,9 +298,10 @@ fn new_safe_wrappers_are_reachable() {
         available_video_encoder_details_with_options;
     let supported_property_dictionary_fn: SupportedPropertyDictionaryFn =
         supported_property_dictionary_for_encoder;
-    let tagged_buffer_group_type_id_fn: fn() -> usize = TaggedBufferGroup::type_id;
+    let tagged_buffer_group_type_id_fn: fn() -> Result<usize, VTError> = TaggedBufferGroup::type_id;
     let tagged_buffer_group_len_fn: fn(&TaggedBufferGroup) -> usize = TaggedBufferGroup::len;
-    let hdr_type_id_fn: fn() -> usize = videotoolbox::hdr_metadata::HdrMetadataSession::type_id;
+    let hdr_type_id_fn: fn() -> Result<usize, VTError> =
+        videotoolbox::hdr_metadata::HdrMetadataSession::type_id;
     let hdr_new_with_formats_fn: fn(
         f32,
         &[videotoolbox::hdr_metadata::HdrMetadataFormat],
@@ -339,6 +340,18 @@ fn new_safe_wrappers_are_reachable() {
         copy_decoder_extension_properties_fn,
         copy_raw_processor_extension_properties_fn,
     );
+    assert_type_id_or_unsupported(tagged_buffer_group_type_id_fn());
+    assert_type_id_or_unsupported(hdr_type_id_fn());
+}
+
+fn assert_type_id_or_unsupported(type_id: Result<usize, VTError>) {
+    match type_id {
+        Ok(type_id) => assert_ne!(type_id, 0),
+        Err(error) => assert!(
+            matches!(error, VTError::Unsupported { .. }),
+            "unexpected error {error:?}"
+        ),
+    }
 }
 
 #[cfg(feature = "frame_processor")]
@@ -413,13 +426,14 @@ fn new_frame_processor_safe_wrappers_are_reachable() {
         videotoolbox::frame_processor::FrameProcessor,
         VTError,
     > = videotoolbox::frame_processor::FrameProcessor::start_optical_flow_with_configuration;
-    let motion_type_id_fn: fn() -> usize =
+    let motion_type_id_fn: fn() -> Result<usize, VTError> =
         videotoolbox::motion_estimation::MotionEstimationSession::type_id;
     let motion_new_with_options_fn: MotionNewWithOptionsFn =
         videotoolbox::motion_estimation::MotionEstimationSession::new_with_options;
     let motion_estimate_with_options_fn: MotionEstimateWithOptionsFn =
         videotoolbox::motion_estimation::MotionEstimationSession::estimate_with_options;
-    let raw_type_id_fn: fn() -> usize = videotoolbox::raw_processing::RawProcessingSession::type_id;
+    let raw_type_id_fn: fn() -> Result<usize, VTError> =
+        videotoolbox::raw_processing::RawProcessingSession::type_id;
     let raw_metadata_for_sidecar_file_fn: fn(
         &videotoolbox::raw_processing::RawProcessingSession,
     ) -> Result<Option<CFType>, VTError> =
@@ -459,4 +473,6 @@ fn new_frame_processor_safe_wrappers_are_reachable() {
         raw_set_parameter_changed_handler_fn,
         raw_clear_parameter_changed_handler_fn,
     );
+    assert_type_id_or_unsupported(motion_type_id_fn());
+    assert_type_id_or_unsupported(raw_type_id_fn());
 }
