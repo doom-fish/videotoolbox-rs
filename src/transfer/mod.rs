@@ -90,7 +90,6 @@ pub struct PixelTransferSession {
 }
 
 unsafe impl Send for PixelTransferSession {}
-unsafe impl Sync for PixelTransferSession {}
 
 crate::utils::retained::vt_retained!(
     PixelTransferSession,
@@ -262,7 +261,6 @@ pub struct PixelRotationSession {
 }
 
 unsafe impl Send for PixelRotationSession {}
-unsafe impl Sync for PixelRotationSession {}
 
 crate::utils::retained::vt_retained!(
     PixelRotationSession,

@@ -20,7 +20,6 @@ pub struct FrameSilo {
 }
 
 unsafe impl Send for FrameSilo {}
-unsafe impl Sync for FrameSilo {}
 
 crate::utils::retained::vt_retained!(FrameSilo, field = inner, release = ffi::CFRelease);
 
@@ -152,7 +151,6 @@ pub struct MultiPassStorage {
 }
 
 unsafe impl Send for MultiPassStorage {}
-unsafe impl Sync for MultiPassStorage {}
 
 crate::utils::retained::vt_retained!(
     MultiPassStorage,

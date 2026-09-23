@@ -74,7 +74,6 @@ pub struct DecompressionSession {
 }
 
 unsafe impl Send for DecompressionSession {}
-unsafe impl Sync for DecompressionSession {}
 
 impl DecompressionSession {
     /// CoreFoundation type identifier for `VTDecompressionSession`.

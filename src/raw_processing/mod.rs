@@ -147,7 +147,6 @@ pub struct RawProcessingSession {
 }
 
 unsafe impl Send for RawProcessingSession {}
-unsafe impl Sync for RawProcessingSession {}
 
 impl Drop for RawProcessingSession {
     fn drop(&mut self) {
