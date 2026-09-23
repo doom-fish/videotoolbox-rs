@@ -1,5 +1,6 @@
 mod common;
 
+use apple_cf::cm::CMTime;
 use common::{make_test_surface, H264_AVC1};
 use videotoolbox::{Codec, CompressionSession, VTError};
 
@@ -21,7 +22,7 @@ fn compression_session_encodes_h264_and_reports_properties() -> Result<(), VTErr
     );
 
     let surface = make_test_surface(64, 64);
-    let encoded = session.encode(&surface, (0, 30))?;
+    let encoded = session.encode(&surface, CMTime::new(0, 30))?;
     assert!(!encoded.data.is_empty(), "encoded frame must contain data");
 
     let sample_buffer = encoded

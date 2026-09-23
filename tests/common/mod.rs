@@ -123,7 +123,7 @@ pub fn encode_h264_test_frame(width: i32, height: i32) -> Result<EncodedFrame, V
         .with_expected_frame_rate(30.0)
         .with_max_keyframe_interval(1)
         .build()?;
-    session.encode(&surface, (0, 30))
+    session.encode(&surface, CMTime::new(0, 30))
 }
 
 pub fn make_bgra_pixel_buffer(width: usize, height: usize) -> CVPixelBuffer {

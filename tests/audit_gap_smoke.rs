@@ -1,6 +1,6 @@
 use apple_cf::{
     cf::CFDictionary,
-    cm::{CMFormatDescription, CMSampleBuffer},
+    cm::{CMFormatDescription, CMSampleBuffer, CMTime},
 };
 #[cfg(feature = "frame_processor")]
 use apple_cf::{cf::CFType, cv::CVPixelBuffer};
@@ -264,7 +264,7 @@ fn targeted_ffi_gap_symbols_are_present() {
 }
 
 type EncodeMultiImageFn =
-    fn(&CompressionSession, &TaggedBufferGroup, (i64, i32)) -> Result<EncodedFrame, VTError>;
+    fn(&CompressionSession, &TaggedBufferGroup, CMTime) -> Result<EncodedFrame, VTError>;
 type DecodeWithOptionsFn = fn(
     &DecompressionSession,
     &CMSampleBuffer,

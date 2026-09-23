@@ -19,6 +19,7 @@
 //!
 //! ```rust,no_run
 //! use videotoolbox::prelude::*;
+//! use apple_cf::cm::CMTime;
 //! use apple_cf::iosurface::IOSurface;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -31,7 +32,7 @@
 //!     .with_expected_frame_rate(60.0)
 //!     .build()?;
 //!
-//! let encoded = encoder.encode(&surface, (0, 60))?;
+//! let encoded = encoder.encode(&surface, CMTime::new(0, 60))?;
 //! println!("Got {} bytes of H.264", encoded.data.len());
 //! # Ok(())
 //! # }
@@ -117,7 +118,10 @@ pub use motion_estimation::{
 pub use raw_processing::{RawProcessingParameter, RawProcessingSession};
 
 #[cfg(feature = "compression")]
-pub use compression::{CompressionSession, CompressionSessionBuilder, EncodedFrame, ProfileLevel};
+pub use compression::{
+    CompressionSession, CompressionSessionBuilder, EncodedFrame, EncoderGpu, FrameProperties,
+    HardwareAcceleration, ProfileLevel,
+};
 
 /// Common imports for users of this crate.
 pub mod prelude {
@@ -127,6 +131,7 @@ pub mod prelude {
 
     #[cfg(feature = "compression")]
     pub use crate::compression::{
-        CompressionSession, CompressionSessionBuilder, EncodedFrame, ProfileLevel,
+        CompressionSession, CompressionSessionBuilder, EncodedFrame, EncoderGpu, FrameProperties,
+        HardwareAcceleration, ProfileLevel,
     };
 }

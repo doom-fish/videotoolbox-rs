@@ -7,6 +7,7 @@
 //!
 //! Verifies the full Rust → extern "C" → `VideoToolbox` path end-to-end.
 
+use apple_cf::cm::CMTime;
 use apple_cf::iosurface::{IOSurface, IOSurfaceLockOptions};
 use videotoolbox::prelude::*;
 
@@ -51,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Encoder ready: 1920×1080 H.264 @ 8 Mbps, 60 fps");
 
     // 4. Encode the frame.
-    let encoded = encoder.encode(&surface, (0, 60))?;
+    let encoded = encoder.encode(&surface, CMTime::new(0, 60))?;
     println!(
         "Encoded frame: {} bytes (info_flags = 0x{:x}, pts = {:?})",
         encoded.data.len(),

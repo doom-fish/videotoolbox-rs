@@ -5,6 +5,7 @@
 #![allow(clippy::similar_names)]
 //! Run with: `cargo run --example 02_encode_sequence`
 
+use apple_cf::cm::CMTime;
 use apple_cf::iosurface::{IOSurface, IOSurfaceLockOptions};
 use videotoolbox::prelude::*;
 
@@ -48,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        let encoded = encoder.encode(&surface, (i64::from(i), 30))?;
+        let encoded = encoder.encode(&surface, CMTime::new(i64::from(i), 30))?;
         total_bytes += encoded.data.len();
 
         // AVCC: stream of (4-byte BE NAL length || NAL bytes) tuples. Walk the

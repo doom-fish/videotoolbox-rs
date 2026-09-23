@@ -39,6 +39,7 @@ The full `VideoToolbox` SDK surface is large, but the useful set for real macOS 
 
 ```rust,no_run
 use videotoolbox::prelude::*;
+use apple_cf::cm::CMTime;
 use apple_cf::iosurface::{IOSurface, IOSurfaceLockOptions};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -55,7 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
 
     // Encode one frame and inspect the resulting CMSampleBuffer.
-    let encoded = encoder.encode(&surface, (0, 60))?;
+    let encoded = encoder.encode(&surface, CMTime::new(0, 60))?;
     println!("Got {} bytes of H.264", encoded.data.len());
 
     if let Some(sb) = encoded.cm_sample_buffer() {

@@ -1,16 +1,19 @@
 //! [`CompressionSession`] — hardware H.264/HEVC/ProRes encoder.
 
 use core::ffi::c_void;
+#[cfg(feature = "async")]
+use core::future::Future;
 use core::ptr;
-use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+#[cfg(feature = "async")]
+use core::task::Poll;
+use core::task::Waker;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Condvar, Mutex, PoisonError};
 
-use apple_cf::cf::{CFDictionary, CFType};
-use apple_cf::cv::CVPixelBufferPool;
+use apple_cf::cf::{CFDictionary, CFNumber, CFString, CFType};
+use apple_cf::cm::{CMSampleBuffer, CMTime};
+use apple_cf::cv::{CVPixelBuffer, CVPixelBufferPool};
 use apple_cf::iosurface::IOSurface;
-#[cfg(feature = "async")]
-use doom_fish_utils::completion::{AsyncCompletion, SyncCompletionPtr};
-#[cfg(feature = "async")]
 use doom_fish_utils::panic_safe::catch_user_panic;
 
 use crate::error::VTError;
@@ -25,14 +28,18 @@ use crate::tagged_buffer_group::TaggedBufferGroup;
 /// so downstream crates (e.g. `avassetwriter-rs`) can hand it off zero-copy
 /// without dealing with raw `*mut c_void` pointers.
 pub struct EncodedFrame {
-    /// Encoded bitstream bytes (NAL units for H.264/HEVC, frame data for `ProRes`).
+    /// Encoded bitstream bytes. For H.264/HEVC these are AVCC-style NAL units,
+    /// each preceded by a big-endian length field (no Annex B start codes); the
+    /// field size and the SPS/PPS/VPS parameter sets come from the format
+    /// description (`CMFormatDescription::video_parameter_sets`). For `ProRes`,
+    /// the frame data.
     pub data: Vec<u8>,
-    /// Presentation timestamp of the source frame (numerator, timescale).
-    pub presentation_time: (i64, i32),
+    /// Presentation timestamp of the frame.
+    pub presentation_time: CMTime,
     /// Encoder hint flags (e.g. dropped, asynchronous).
     pub info_flags: u32,
     /// Underlying `CoreMedia` sample buffer. `None` for dropped frames.
-    sample_buffer: Option<apple_cf::cm::CMSampleBuffer>,
+    sample_buffer: Option<CMSampleBuffer>,
 }
 
 impl EncodedFrame {
@@ -56,6 +63,41 @@ impl EncodedFrame {
             .map_or(core::ptr::null_mut::<c_void>().cast(), |sample_buffer| {
                 sample_buffer.as_ptr().cast()
             })
+    }
+
+    fn from_output(output: FrameOutput, source_time: CMTime) -> Result<Self, VTError> {
+        let Some(sample_buffer) = output.sample_buffer else {
+            return Ok(Self {
+                data: Vec::new(),
+                presentation_time: source_time,
+                info_flags: output.info_flags,
+                sample_buffer: None,
+            });
+        };
+        let block_buffer =
+            unsafe { ffi::CMSampleBufferGetDataBuffer(sample_buffer.as_ptr().cast()) };
+        if block_buffer.is_null() {
+            return Err(VTError::EncoderCallback(-2));
+        }
+        let len = unsafe { ffi::CMBlockBufferGetDataLength(block_buffer) };
+        let mut data = vec![0u8; len];
+        let copy_status = unsafe {
+            ffi::CMBlockBufferCopyDataBytes(
+                block_buffer,
+                0,
+                len,
+                data.as_mut_ptr().cast::<c_void>(),
+            )
+        };
+        if copy_status != 0 {
+            return Err(VTError::EncoderCallback(copy_status));
+        }
+        Ok(Self {
+            data,
+            presentation_time: sample_buffer.presentation_timestamp(),
+            info_flags: output.info_flags,
+            sample_buffer: Some(sample_buffer),
+        })
     }
 }
 
@@ -111,6 +153,89 @@ pub struct CompressionSessionBuilder {
     max_keyframe_interval: Option<i32>,
     quality: Option<f32>,
     profile_level: Option<ProfileLevel>,
+    hardware_acceleration: Option<HardwareAcceleration>,
+    encoder_id: Option<String>,
+    low_latency_rate_control: Option<bool>,
+    encoder_gpu: Option<EncoderGpu>,
+    source_pixel_buffer_attributes: Option<CFDictionary>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum HardwareAcceleration {
+    Preferred,
+    Required,
+    Disabled,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum EncoderGpu {
+    Preferred(u64),
+    Required(u64),
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct FrameProperties {
+    force_key_frame: bool,
+}
+
+impl FrameProperties {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            force_key_frame: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn with_force_key_frame(mut self, force_key_frame: bool) -> Self {
+        self.force_key_frame = force_key_frame;
+        self
+    }
+
+    #[must_use]
+    pub fn to_dictionary(self) -> Option<CFDictionary> {
+        let mut pairs = Vec::new();
+        if self.force_key_frame {
+            pairs.push((
+                unsafe { ffi::kVTEncodeFrameOptionKey_ForceKeyFrame },
+                cf_boolean(true),
+            ));
+        }
+        cf_dictionary(&pairs)
+    }
+}
+
+fn cf_boolean(value: bool) -> ffi::CFTypeRef {
+    let value = unsafe {
+        if value {
+            ffi::kCFBooleanTrue
+        } else {
+            ffi::kCFBooleanFalse
+        }
+    };
+    value.cast()
+}
+
+fn cf_dictionary(pairs: &[(ffi::CFStringRef, ffi::CFTypeRef)]) -> Option<CFDictionary> {
+    if pairs.is_empty() {
+        return None;
+    }
+    let dictionary = unsafe {
+        ffi::CFDictionaryCreateMutable(
+            ffi::kCFAllocatorDefault,
+            0,
+            (&raw const ffi::kCFTypeDictionaryKeyCallBacks).cast(),
+            (&raw const ffi::kCFTypeDictionaryValueCallBacks).cast(),
+        )
+    };
+    if dictionary.is_null() {
+        return None;
+    }
+    for (key, value) in pairs {
+        unsafe { ffi::CFDictionarySetValue(dictionary, key.cast(), value.cast()) };
+    }
+    unsafe { CFDictionary::from_raw(dictionary.cast()) }
 }
 
 macro_rules! define_profile_levels {
@@ -241,6 +366,11 @@ impl CompressionSessionBuilder {
             max_keyframe_interval: None,
             quality: None,
             profile_level: None,
+            hardware_acceleration: None,
+            encoder_id: None,
+            low_latency_rate_control: None,
+            encoder_gpu: None,
+            source_pixel_buffer_attributes: None,
         }
     }
 
@@ -296,6 +426,36 @@ impl CompressionSessionBuilder {
         self
     }
 
+    #[must_use]
+    pub const fn with_hardware_acceleration(mut self, acceleration: HardwareAcceleration) -> Self {
+        self.hardware_acceleration = Some(acceleration);
+        self
+    }
+
+    #[must_use]
+    pub fn with_encoder_id(mut self, encoder_id: impl Into<String>) -> Self {
+        self.encoder_id = Some(encoder_id.into());
+        self
+    }
+
+    #[must_use]
+    pub const fn with_low_latency_rate_control(mut self, enabled: bool) -> Self {
+        self.low_latency_rate_control = Some(enabled);
+        self
+    }
+
+    #[must_use]
+    pub const fn with_encoder_gpu(mut self, gpu: EncoderGpu) -> Self {
+        self.encoder_gpu = Some(gpu);
+        self
+    }
+
+    #[must_use]
+    pub fn with_source_pixel_buffer_attributes(mut self, attributes: CFDictionary) -> Self {
+        self.source_pixel_buffer_attributes = Some(attributes);
+        self
+    }
+
     /// Construct the session and apply all configured properties.
     ///
     /// # Errors
@@ -312,6 +472,53 @@ impl CompressionSessionBuilder {
         }
         CompressionSession::new_internal(&self)
     }
+
+    fn encoder_specification(&self) -> Option<CFDictionary> {
+        let encoder_id = self.encoder_id.as_deref().map(CFString::new);
+        let encoder_gpu = self.encoder_gpu.map(|gpu| match gpu {
+            EncoderGpu::Preferred(registry_id) => (
+                unsafe { ffi::kVTVideoEncoderSpecification_PreferredEncoderGPURegistryID },
+                CFNumber::from_u64(registry_id),
+            ),
+            EncoderGpu::Required(registry_id) => (
+                unsafe { ffi::kVTVideoEncoderSpecification_RequiredEncoderGPURegistryID },
+                CFNumber::from_u64(registry_id),
+            ),
+        });
+
+        let mut pairs = Vec::new();
+        match self.hardware_acceleration {
+            Some(HardwareAcceleration::Preferred) => pairs.push((
+                unsafe { ffi::kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder },
+                cf_boolean(true),
+            )),
+            Some(HardwareAcceleration::Required) => pairs.push((
+                unsafe { ffi::kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder },
+                cf_boolean(true),
+            )),
+            Some(HardwareAcceleration::Disabled) => pairs.push((
+                unsafe { ffi::kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder },
+                cf_boolean(false),
+            )),
+            None => {}
+        }
+        if let Some(encoder_id) = &encoder_id {
+            pairs.push((
+                unsafe { ffi::kVTVideoEncoderSpecification_EncoderID },
+                encoder_id.as_ptr().cast_const(),
+            ));
+        }
+        if let Some(enabled) = self.low_latency_rate_control {
+            pairs.push((
+                unsafe { ffi::kVTVideoEncoderSpecification_EnableLowLatencyRateControl },
+                cf_boolean(enabled),
+            ));
+        }
+        if let Some((key, registry_id)) = &encoder_gpu {
+            pairs.push((*key, registry_id.as_ptr().cast_const()));
+        }
+        cf_dictionary(&pairs)
+    }
 }
 
 /// Hardware-accelerated video compression session.
@@ -320,22 +527,110 @@ impl CompressionSessionBuilder {
 /// `VTCompressionSessionRef`; the underlying encoder is invalidated on drop.
 pub struct CompressionSession {
     session: ffi::VTCompressionSessionRef,
-    state: Arc<EncoderState>,
-    callback_ref_con: *const EncoderState,
 }
 
-// SAFETY: VideoToolbox sessions are documented as thread-safe for concurrent
-// `encode` calls; the underlying encoder owns its own dispatch queue.
+// SAFETY: the session handle may move to another thread; the output callback
+// only touches the per-frame slot it is handed, which is `Send + Sync`.
 unsafe impl Send for CompressionSession {}
-unsafe impl Sync for CompressionSession {}
 
-struct EncoderState {
-    out_tx: Mutex<mpsc::Sender<Result<EncodedFrame, VTError>>>,
-    out_rx: Mutex<mpsc::Receiver<Result<EncodedFrame, VTError>>>,
+struct FrameOutput {
+    info_flags: ffi::VTEncodeInfoFlags,
+    sample_buffer: Option<CMSampleBuffer>,
 }
 
-#[cfg(feature = "async")]
-struct AsyncEncodeContext(SyncCompletionPtr);
+#[derive(Default)]
+struct FrameState {
+    output: Option<Result<FrameOutput, VTError>>,
+    waker: Option<Waker>,
+}
+
+struct FrameSlot {
+    native: AtomicBool,
+    state: Mutex<FrameState>,
+    completed: Condvar,
+}
+
+impl FrameSlot {
+    fn new() -> Arc<Self> {
+        Arc::new(Self {
+            native: AtomicBool::new(true),
+            state: Mutex::new(FrameState::default()),
+            completed: Condvar::new(),
+        })
+    }
+
+    fn native_ref_con(self: &Arc<Self>) -> *mut c_void {
+        Arc::into_raw(Arc::clone(self)).cast_mut().cast()
+    }
+
+    fn submit(submit: impl FnOnce(*mut c_void) -> ffi::OSStatus) -> Result<Arc<Self>, VTError> {
+        let slot = Self::new();
+        let ref_con = slot.native_ref_con();
+        let status = submit(ref_con);
+        if status != 0 {
+            drop(unsafe { Self::release_native(ref_con) });
+            return Err(VTError::EncodeFailed(status));
+        }
+        Ok(slot)
+    }
+
+    unsafe fn release_native(ref_con: *mut c_void) -> Option<Arc<Self>> {
+        let slot = unsafe { ref_con.cast::<Self>().as_ref() }?;
+        if slot.native.swap(false, Ordering::AcqRel) {
+            Some(unsafe { Arc::from_raw(ref_con.cast::<Self>().cast_const()) })
+        } else {
+            None
+        }
+    }
+
+    fn complete(&self, result: Result<FrameOutput, VTError>) {
+        let waker = {
+            let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+            if state.output.is_none() {
+                state.output = Some(result);
+            }
+            state.waker.take()
+        };
+        self.completed.notify_all();
+        if let Some(waker) = waker {
+            waker.wake();
+        }
+    }
+
+    fn take(&self) -> Option<Result<FrameOutput, VTError>> {
+        self.state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .output
+            .take()
+    }
+
+    fn wait(&self) -> Result<FrameOutput, VTError> {
+        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        loop {
+            if let Some(output) = state.output.take() {
+                return output;
+            }
+            state = self
+                .completed
+                .wait(state)
+                .unwrap_or_else(PoisonError::into_inner);
+        }
+    }
+
+    #[cfg(feature = "async")]
+    fn poll_output(&self, waker: &Waker) -> Option<Result<FrameOutput, VTError>> {
+        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        let output = state.output.take();
+        if output.is_none() {
+            match &state.waker {
+                Some(existing) if existing.will_wake(waker) => {}
+                _ => state.waker = Some(waker.clone()),
+            }
+        }
+        output
+    }
+}
 
 impl CompressionSession {
     /// Convenience: start a builder.
@@ -356,9 +651,8 @@ impl CompressionSession {
     /// encode support.
     #[must_use]
     pub fn is_stereo_mvhevc_encode_supported() -> bool {
-        // SAFETY: `VTIsStereoMVHEVCEncodeSupported` is a standard query function
-        // that performs no I/O and has no side effects.
-        unsafe { ffi::VTIsStereoMVHEVCEncodeSupported() != 0 }
+        ffi::dynamic::VTIsStereoMVHEVCEncodeSupported()
+            .is_ok_and(|is_supported| unsafe { is_supported() } != 0)
     }
 
     /// Returns the current source-pixel-buffer pool, retaining it so the
@@ -516,46 +810,35 @@ impl CompressionSession {
     }
 
     fn new_internal(b: &CompressionSessionBuilder) -> Result<Self, VTError> {
-        let (tx, rx) = mpsc::channel();
-        let state = Arc::new(EncoderState {
-            out_tx: Mutex::new(tx),
-            out_rx: Mutex::new(rx),
-        });
-        let callback_ref_con = Arc::into_raw(Arc::clone(&state))
-            .cast::<c_void>()
-            .cast_mut();
-
+        let encoder_specification = b.encoder_specification();
         let mut session_ptr: ffi::VTCompressionSessionRef = ptr::null_mut();
         // SAFETY: `VTCompressionSessionCreate` is a standard Apple SDK function.
         // All arguments are valid pointers/values: allocator is default, callback is a valid
-        // C function, ref_con points to an Arc that will be owned by the callback,
-        // and session_ptr is uninitialized but properly initialized on return.
+        // C function, and session_ptr is uninitialized but properly initialized on return.
         let status = unsafe {
             ffi::VTCompressionSessionCreate(
                 ffi::kCFAllocatorDefault,
                 b.width,
                 b.height,
                 b.codec.as_cm_codec_type(),
-                ptr::null(),
-                ptr::null(),
+                encoder_specification
+                    .as_ref()
+                    .map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
+                b.source_pixel_buffer_attributes
+                    .as_ref()
+                    .map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
                 ffi::kCFAllocatorDefault,
                 Some(encode_callback),
-                callback_ref_con,
+                ptr::null_mut(),
                 &raw mut session_ptr,
             )
         };
         if status != 0 || session_ptr.is_null() {
-            // Drop the leaked Arc clone since the encoder will never call us back.
-            // SAFETY: This Arc was created via `Arc::into_raw` below and leaked to VideoToolbox.
-            // If initialization fails, we must recover and drop it to avoid a leak.
-            unsafe { drop(Arc::from_raw(callback_ref_con.cast::<EncoderState>())) };
             return Err(VTError::SessionCreateFailed(status));
         }
 
         let session = Self {
             session: session_ptr,
-            state,
-            callback_ref_con: callback_ref_con.cast(),
         };
 
         // Apply properties.
@@ -619,8 +902,9 @@ impl CompressionSession {
 
     /// Submit one frame for encoding and block until the encoder has emitted it.
     ///
-    /// `presentation_time` is `(value, timescale)`, e.g. `(0, 30)` for the first
-    /// frame of a 30 fps stream and `(1, 30)` for the second.
+    /// `presentation_time` is the frame's timestamp, e.g. `CMTime::new(0, 30)`
+    /// for the first frame of a 30 fps stream and `CMTime::new(1, 30)` for the
+    /// second.
     ///
     /// # Errors
     ///
@@ -628,87 +912,105 @@ impl CompressionSession {
     /// wrapped, [`VTError::EncodeFailed`] if the encoder rejects the frame, or
     /// [`VTError::EncoderCallback`] if the encoder reports a non-zero status
     /// asynchronously.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the encoder's internal callback receiver mutex is poisoned
-    /// (only possible if a previous callback panicked while holding it).
     pub fn encode(
         &self,
         surface: &IOSurface,
-        presentation_time: (i64, i32),
+        presentation_time: CMTime,
+    ) -> Result<EncodedFrame, VTError> {
+        self.encode_with_properties(surface, presentation_time, FrameProperties::new())
+    }
+
+    #[allow(clippy::missing_errors_doc)]
+    pub fn encode_with_properties(
+        &self,
+        surface: &IOSurface,
+        presentation_time: CMTime,
+        properties: FrameProperties,
     ) -> Result<EncodedFrame, VTError> {
         let pixel_buffer = self.wrap_iosurface(surface)?;
-        let pts = ffi::CMTime::new(presentation_time.0, presentation_time.1);
-        let status = unsafe {
+        let frame_properties = properties.to_dictionary();
+        let slot = FrameSlot::submit(|ref_con| unsafe {
             ffi::VTCompressionSessionEncodeFrame(
                 self.session,
-                pixel_buffer,
-                pts,
-                ffi::CMTime::INVALID,
-                ptr::null(),
-                ptr::null_mut(),
+                pixel_buffer.as_ptr().cast(),
+                presentation_time,
+                CMTime::INVALID,
+                frame_properties
+                    .as_ref()
+                    .map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
+                ref_con,
                 ptr::null_mut(),
             )
-        };
-        unsafe { ffi::CFRelease(pixel_buffer.cast()) };
-        self.finish_encode(status)
+        })?;
+        self.complete_frame(&slot, presentation_time)
     }
 
     /// Submit `image_buffer` for encoding and await the encoded `CMSampleBuffer`.
+    ///
+    /// The frame is submitted when this is called. If the encoder is still
+    /// holding it back (for example for frame reordering) when the future is
+    /// first polled, the poll forces it out with
+    /// `VTCompressionSessionCompleteFrames` up to `presentation_timestamp`,
+    /// blocking the polling thread until the encoder emits it.
     ///
     /// This method requires the crate's `async` feature.
     ///
     /// # Errors
     ///
-    /// Returns [`VTError::EncodeFailed`] if the frame submission is rejected or
+    /// Returns [`VTError::EncodeFailed`] if the frame submission is rejected,
+    /// [`VTError::CompleteFailed`] if forcing the output fails, or
     /// [`VTError::EncoderCallback`] if the encoder callback reports a failure or
     /// drops the frame without a `CMSampleBuffer`.
     #[cfg(feature = "async")]
     #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-    #[allow(clippy::future_not_send)]
-    pub async fn encode_frame_async(
+    pub fn encode_frame_async(
         &self,
-        image_buffer: apple_cf::cv::CVPixelBuffer,
-        presentation_timestamp: apple_cf::cm::CMTime,
-        duration: apple_cf::cm::CMTime,
+        image_buffer: CVPixelBuffer,
+        presentation_timestamp: CMTime,
+        duration: CMTime,
         frame_properties: Option<CFDictionary>,
-    ) -> Result<apple_cf::cm::CMSampleBuffer, VTError> {
-        let (future, completion) = AsyncCompletion::<apple_cf::cm::CMSampleBuffer>::create();
-        let context = Box::into_raw(Box::new(AsyncEncodeContext(completion)));
-        let frame_properties_ref = frame_properties.as_ref();
-        let status = unsafe {
+    ) -> impl Future<Output = Result<CMSampleBuffer, VTError>> + '_ {
+        let submitted = FrameSlot::submit(|ref_con| unsafe {
             ffi::VTCompressionSessionEncodeFrame(
                 self.session,
                 image_buffer.as_ptr().cast(),
                 presentation_timestamp,
                 duration,
-                frame_properties_ref.map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
-                context.cast::<c_void>(),
+                frame_properties
+                    .as_ref()
+                    .map_or(ptr::null(), |dict| dict.as_ptr().cast_const().cast()),
+                ref_con,
                 ptr::null_mut(),
             )
-        };
-        if status != 0 {
-            let context = unsafe { Box::from_raw(context) };
-            unsafe {
-                AsyncCompletion::<apple_cf::cm::CMSampleBuffer>::complete_err(
-                    context.0,
-                    status.to_string(),
-                );
+        });
+        let mut forced = false;
+        core::future::poll_fn(move |cx| {
+            let slot = match &submitted {
+                Ok(slot) => slot,
+                Err(error) => return Poll::Ready(Err(error.clone())),
             };
-            return Err(VTError::EncodeFailed(status));
-        }
-
-        future
-            .await
-            .map_err(|error| VTError::EncoderCallback(parse_async_status(&error)))
+            if let Some(output) = slot.poll_output(cx.waker()) {
+                return Poll::Ready(sample_buffer_from(output));
+            }
+            if !forced {
+                forced = true;
+                let status = unsafe {
+                    ffi::VTCompressionSessionCompleteFrames(self.session, presentation_timestamp)
+                };
+                if status != 0 {
+                    return Poll::Ready(Err(VTError::CompleteFailed(status)));
+                }
+                if let Some(output) = slot.poll_output(cx.waker()) {
+                    return Poll::Ready(sample_buffer_from(output));
+                }
+            }
+            Poll::Pending
+        })
     }
 
     /// Complete pending output, invalidate the encoder, and release its native resources.
     ///
-    /// Unlike `Drop`, this surfaces a failure to prove that output callbacks are
-    /// quiescent. On that exceptional path the native callback context is kept
-    /// alive to prevent an in-flight callback from observing freed Rust state.
+    /// Unlike `Drop`, this reports a failure to complete the pending frames.
     ///
     /// # Errors
     ///
@@ -726,45 +1028,51 @@ impl CompressionSession {
     ///
     /// # Errors
     ///
-    /// Returns [`VTError::EncodeFailed`] if the encoder rejects the frame or
+    /// Returns [`VTError::Unsupported`] before macOS 14.0,
+    /// [`VTError::EncodeFailed`] if the encoder rejects the frame or
     /// [`VTError::EncoderCallback`] if the completion callback reports failure.
     pub fn encode_multi_image(
         &self,
         tagged_buffer_group: &TaggedBufferGroup,
-        presentation_time: (i64, i32),
+        presentation_time: CMTime,
     ) -> Result<EncodedFrame, VTError> {
-        let pts = ffi::CMTime::new(presentation_time.0, presentation_time.1);
-        let status = unsafe {
-            ffi::VTCompressionSessionEncodeMultiImageFrame(
+        let encode = ffi::dynamic::VTCompressionSessionEncodeMultiImageFrame()?;
+        let slot = FrameSlot::submit(|ref_con| unsafe {
+            encode(
                 self.session,
                 tagged_buffer_group.as_ptr(),
-                pts,
-                ffi::CMTime::INVALID,
+                presentation_time,
+                CMTime::INVALID,
                 ptr::null(),
-                ptr::null_mut(),
+                ref_con,
                 ptr::null_mut(),
             )
-        };
-        self.finish_encode(status)
+        })?;
+        self.complete_frame(&slot, presentation_time)
     }
 
-    fn finish_encode(&self, encode_status: ffi::OSStatus) -> Result<EncodedFrame, VTError> {
-        if encode_status != 0 {
-            return Err(VTError::EncodeFailed(encode_status));
-        }
-
-        let complete_status =
-            unsafe { ffi::VTCompressionSessionCompleteFrames(self.session, ffi::CMTime::INVALID) };
-        if complete_status != 0 {
-            return Err(VTError::CompleteFailed(complete_status));
-        }
-
-        let rx = self.state.out_rx.lock().expect("encoder rx mutex poisoned");
-        rx.recv().map_err(|_| VTError::EncoderCallback(-1))?
+    fn complete_frame(
+        &self,
+        slot: &FrameSlot,
+        presentation_time: CMTime,
+    ) -> Result<EncodedFrame, VTError> {
+        let output = match slot.take() {
+            Some(output) => output,
+            None => {
+                let status = unsafe {
+                    ffi::VTCompressionSessionCompleteFrames(self.session, presentation_time)
+                };
+                if status != 0 {
+                    return Err(VTError::CompleteFailed(status));
+                }
+                slot.wait()
+            }
+        };
+        EncodedFrame::from_output(output?, presentation_time)
     }
 
     #[allow(clippy::unused_self)]
-    fn wrap_iosurface(&self, surface: &IOSurface) -> Result<ffi::CVPixelBufferRef, VTError> {
+    fn wrap_iosurface(&self, surface: &IOSurface) -> Result<CVPixelBuffer, VTError> {
         let mut pb: ffi::CVPixelBufferRef = ptr::null_mut();
         let status = unsafe {
             ffi::CVPixelBufferCreateWithIOSurface(
@@ -777,7 +1085,8 @@ impl CompressionSession {
         if status != 0 || pb.is_null() {
             return Err(VTError::PixelBufferCreateFailed(status));
         }
-        Ok(pb)
+        unsafe { CVPixelBuffer::from_raw(pb.cast()) }
+            .ok_or(VTError::PixelBufferCreateFailed(status))
     }
 
     fn set_property_bool(
@@ -908,19 +1217,9 @@ impl CompressionSession {
         self.session = ptr::null_mut();
 
         if complete_status == 0 {
-            self.release_callback_ref_con();
             Ok(())
         } else {
-            // A failed drain cannot prove that native code is done with the ref-con.
-            self.callback_ref_con = ptr::null();
             Err(VTError::CompleteFailed(complete_status))
-        }
-    }
-
-    fn release_callback_ref_con(&mut self) {
-        let callback_ref_con = core::mem::replace(&mut self.callback_ref_con, ptr::null());
-        if !callback_ref_con.is_null() {
-            unsafe { drop(Arc::from_raw(callback_ref_con)) };
         }
     }
 }
@@ -942,121 +1241,51 @@ impl core::fmt::Debug for CompressionSession {
 // ---- internal callback ----
 
 #[cfg(feature = "async")]
-fn parse_async_status(error: &str) -> ffi::OSStatus {
-    error.parse().unwrap_or(-1)
-}
-
-#[cfg(feature = "async")]
-fn complete_async_encode(
-    source_frame_ref_con: *mut c_void,
-    status: ffi::OSStatus,
-    sample_buffer: ffi::CMSampleBufferRef,
-) {
-    catch_user_panic("videotoolbox::compression::encode_frame_async", || {
-        let context = unsafe { Box::from_raw(source_frame_ref_con.cast::<AsyncEncodeContext>()) };
-        if status != 0 {
-            unsafe {
-                AsyncCompletion::<apple_cf::cm::CMSampleBuffer>::complete_err(
-                    context.0,
-                    status.to_string(),
-                );
-            };
-            return;
-        }
-
-        let Some(sample_buffer) =
-            (unsafe { apple_cf::cm::CMSampleBuffer::from_raw_borrowed(sample_buffer.cast()) })
-        else {
-            unsafe {
-                AsyncCompletion::<apple_cf::cm::CMSampleBuffer>::complete_err(
-                    context.0,
-                    "-1".into(),
-                );
-            };
-            return;
-        };
-
-        unsafe {
-            AsyncCompletion::<apple_cf::cm::CMSampleBuffer>::complete_ok(context.0, sample_buffer);
-        };
-    });
+fn sample_buffer_from(output: Result<FrameOutput, VTError>) -> Result<CMSampleBuffer, VTError> {
+    output?.sample_buffer.ok_or(VTError::EncoderCallback(-1))
 }
 
 unsafe extern "C" fn encode_callback(
-    output_callback_ref_con: *mut c_void,
+    _output_callback_ref_con: *mut c_void,
     source_frame_ref_con: *mut c_void,
     status: ffi::OSStatus,
     info_flags: ffi::VTEncodeInfoFlags,
     sample_buffer: ffi::CMSampleBufferRef,
 ) {
-    #[cfg(not(feature = "async"))]
-    let _ = source_frame_ref_con;
-    #[cfg(feature = "async")]
-    if !source_frame_ref_con.is_null() {
-        complete_async_encode(source_frame_ref_con, status, sample_buffer);
-        return;
-    }
-
-    // We borrow but do not consume the Arc — the session keeps it alive for
-    // the lifetime of the encoder.
-    let state_ptr = output_callback_ref_con.cast::<EncoderState>();
-    let state = Arc::from_raw(state_ptr);
-    let state_clone = state.clone();
-    core::mem::forget(state); // restore refcount
-
-    let result = if status != 0 {
-        Err(VTError::EncoderCallback(status))
-    } else if sample_buffer.is_null() {
-        // Frame was dropped — emit an empty frame with the dropped flag set.
-        Ok(EncodedFrame {
-            data: Vec::new(),
-            presentation_time: (0, 0),
-            info_flags,
-            sample_buffer: None,
-        })
-    } else {
-        let pts = ffi::CMSampleBufferGetPresentationTimeStamp(sample_buffer);
-        let block_buffer = ffi::CMSampleBufferGetDataBuffer(sample_buffer);
-        if block_buffer.is_null() {
-            Err(VTError::EncoderCallback(-2))
+    catch_user_panic("videotoolbox::compression::encode_callback", || {
+        let Some(slot) = (unsafe { FrameSlot::release_native(source_frame_ref_con) }) else {
+            return;
+        };
+        let result = if status == 0 {
+            Ok(FrameOutput {
+                info_flags,
+                sample_buffer: unsafe { CMSampleBuffer::from_raw_borrowed(sample_buffer.cast()) },
+            })
         } else {
-            let len = ffi::CMBlockBufferGetDataLength(block_buffer);
-            let mut data = vec![0u8; len];
-            let copy_status = ffi::CMBlockBufferCopyDataBytes(
-                block_buffer,
-                0,
-                len,
-                data.as_mut_ptr().cast::<c_void>(),
-            );
-            if copy_status != 0 {
-                Err(VTError::EncoderCallback(copy_status))
-            } else {
-                // Wrap the CMSampleBuffer in a safe apple_cf type. The
-                // wrapper retains-on-take so the encoder's reference is
-                // unaffected.
-                let safe = apple_cf::cm::CMSampleBuffer::from_raw_borrowed(sample_buffer.cast());
-                Ok(EncodedFrame {
-                    data,
-                    presentation_time: (pts.value, pts.timescale),
-                    info_flags,
-                    sample_buffer: safe,
-                })
-            }
-        }
-    };
-
-    // Avoid panicking across the FFI boundary if the mutex is poisoned.
-    if let Ok(tx) = state_clone.out_tx.lock() {
-        let _ = tx.send(result);
-    };
+            Err(VTError::EncoderCallback(status))
+        };
+        slot.complete(result);
+    });
 }
 
 #[cfg(test)]
 mod tests {
+    use core::ffi::c_void;
+    use core::ptr;
     use std::sync::Arc;
 
-    use super::{CompressionSessionBuilder, EncodedFrame, ProfileLevel};
+    use apple_cf::cf::{CFNumber, CFString, CFType};
+    use apple_cf::cm::CMTime;
+
+    use super::{
+        encode_callback, CompressionSessionBuilder, EncodedFrame, EncoderGpu, FrameProperties,
+        FrameSlot, HardwareAcceleration, ProfileLevel,
+    };
     use crate::{error::VTError, ffi, session::Codec};
+
+    fn key(raw: ffi::CFStringRef) -> CFType {
+        unsafe { CFType::from_raw_borrowed(raw.cast_mut().cast()) }.expect("SDK key")
+    }
 
     #[test]
     fn builder_new_starts_with_expected_defaults() {
@@ -1072,6 +1301,12 @@ mod tests {
         assert_eq!(builder.max_keyframe_interval, None);
         assert_eq!(builder.quality, None);
         assert_eq!(builder.profile_level, None);
+        assert_eq!(builder.hardware_acceleration, None);
+        assert_eq!(builder.encoder_id, None);
+        assert_eq!(builder.low_latency_rate_control, None);
+        assert_eq!(builder.encoder_gpu, None);
+        assert!(builder.source_pixel_buffer_attributes.is_none());
+        assert!(builder.encoder_specification().is_none());
     }
 
     #[test]
@@ -1108,6 +1343,99 @@ mod tests {
     }
 
     #[test]
+    fn encoder_specification_carries_every_requested_key() {
+        let builder = CompressionSessionBuilder::new(64, 64, Codec::H264)
+            .with_hardware_acceleration(HardwareAcceleration::Required)
+            .with_encoder_id("com.example.encoder")
+            .with_low_latency_rate_control(true)
+            .with_encoder_gpu(EncoderGpu::Required(u64::MAX));
+
+        let spec = builder
+            .encoder_specification()
+            .expect("specification should be built");
+
+        assert_eq!(spec.len(), 4);
+        let require = spec
+            .get(&key(unsafe {
+                ffi::kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder
+            }))
+            .expect("require key");
+        assert_eq!(require.as_ptr().cast_const(), super::cf_boolean(true));
+        let encoder_id = spec
+            .get(&key(unsafe { ffi::kVTVideoEncoderSpecification_EncoderID }))
+            .expect("encoder id key");
+        assert_eq!(encoder_id.type_id(), CFString::type_id());
+        let encoder_id =
+            unsafe { CFString::from_raw_borrowed(encoder_id.as_ptr()) }.expect("string");
+        assert_eq!(encoder_id.to_string(), "com.example.encoder");
+        let low_latency = spec
+            .get(&key(unsafe {
+                ffi::kVTVideoEncoderSpecification_EnableLowLatencyRateControl
+            }))
+            .expect("low-latency key");
+        assert_eq!(low_latency.as_ptr().cast_const(), super::cf_boolean(true));
+        let registry_id = spec
+            .get(&key(unsafe {
+                ffi::kVTVideoEncoderSpecification_RequiredEncoderGPURegistryID
+            }))
+            .expect("registry id key");
+        assert_eq!(registry_id.type_id(), CFNumber::type_id());
+        let registry_id =
+            unsafe { CFNumber::from_raw_borrowed(registry_id.as_ptr()) }.expect("number");
+        assert_eq!(registry_id.to_u64(), Some(u64::MAX));
+    }
+
+    #[test]
+    fn encoder_specification_maps_preferred_and_disabled_acceleration() {
+        let preferred = CompressionSessionBuilder::new(64, 64, Codec::H264)
+            .with_hardware_acceleration(HardwareAcceleration::Preferred)
+            .with_encoder_gpu(EncoderGpu::Preferred(7))
+            .encoder_specification()
+            .expect("specification should be built");
+        let enable =
+            key(unsafe { ffi::kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder });
+        assert_eq!(
+            preferred
+                .get(&enable)
+                .map(|value| value.as_ptr().cast_const()),
+            Some(super::cf_boolean(true))
+        );
+        assert!(preferred
+            .get(&key(unsafe {
+                ffi::kVTVideoEncoderSpecification_PreferredEncoderGPURegistryID
+            }))
+            .is_some());
+
+        let disabled = CompressionSessionBuilder::new(64, 64, Codec::H264)
+            .with_hardware_acceleration(HardwareAcceleration::Disabled)
+            .encoder_specification()
+            .expect("specification should be built");
+        assert_eq!(disabled.len(), 1);
+        assert_eq!(
+            disabled
+                .get(&enable)
+                .map(|value| value.as_ptr().cast_const()),
+            Some(super::cf_boolean(false))
+        );
+    }
+
+    #[test]
+    fn frame_properties_only_build_a_dictionary_when_needed() {
+        assert!(FrameProperties::new().to_dictionary().is_none());
+        assert_eq!(FrameProperties::default(), FrameProperties::new());
+
+        let dictionary = FrameProperties::new()
+            .with_force_key_frame(true)
+            .to_dictionary()
+            .expect("forced keyframe needs a dictionary");
+        assert_eq!(dictionary.len(), 1);
+        let force = dictionary
+            .get(&key(unsafe { ffi::kVTEncodeFrameOptionKey_ForceKeyFrame }))
+            .expect("force keyframe key");
+        assert_eq!(force.as_ptr().cast_const(), super::cf_boolean(true));
+    }
+
+    #[test]
     fn build_rejects_non_positive_dimensions_before_entering_ffi() {
         let error = CompressionSessionBuilder::new(0, 1080, Codec::H264)
             .build()
@@ -1120,32 +1448,111 @@ mod tests {
     }
 
     #[test]
-    fn invalidation_releases_encoder_callback_state() -> Result<(), VTError> {
-        let session = CompressionSessionBuilder::new(16, 16, Codec::H264).build()?;
-        let state = Arc::downgrade(&session.state);
+    fn output_callback_completes_the_frame_it_belongs_to() {
+        let first = FrameSlot::new();
+        let second = FrameSlot::new();
+        let first_ref_con = first.native_ref_con();
+        let second_ref_con = second.native_ref_con();
 
-        session.invalidate()?;
+        unsafe {
+            encode_callback(ptr::null_mut(), second_ref_con, 0, 7, ptr::null_mut());
+            encode_callback(ptr::null_mut(), first_ref_con, -12902, 0, ptr::null_mut());
+        }
 
-        assert!(state.upgrade().is_none());
-        Ok(())
+        assert_eq!(second.wait().map(|output| output.info_flags), Ok(7));
+        assert_eq!(
+            first.wait().map(|output| output.info_flags),
+            Err(VTError::EncoderCallback(-12902))
+        );
+        assert_eq!(Arc::strong_count(&first), 1);
+        assert_eq!(Arc::strong_count(&second), 1);
     }
 
     #[test]
-    fn drop_releases_encoder_callback_state() -> Result<(), VTError> {
-        let session = CompressionSessionBuilder::new(16, 16, Codec::H264).build()?;
-        let state = Arc::downgrade(&session.state);
+    fn duplicate_output_callback_is_ignored() {
+        let slot = FrameSlot::new();
+        let ref_con = slot.native_ref_con();
 
-        drop(session);
+        unsafe {
+            encode_callback(ptr::null_mut(), ref_con, 0, 1, ptr::null_mut());
+            encode_callback(ptr::null_mut(), ref_con, -1, 2, ptr::null_mut());
+            encode_callback(ptr::null_mut(), ptr::null_mut(), -1, 3, ptr::null_mut());
+        }
 
-        assert!(state.upgrade().is_none());
-        Ok(())
+        assert_eq!(slot.wait().map(|output| output.info_flags), Ok(1));
+        assert_eq!(Arc::strong_count(&slot), 1);
+    }
+
+    fn observe(ref_con: *mut c_void) -> std::sync::Weak<FrameSlot> {
+        let native = unsafe { Arc::from_raw(ref_con.cast::<FrameSlot>().cast_const()) };
+        let weak = Arc::downgrade(&native);
+        let _ = Arc::into_raw(native);
+        weak
+    }
+
+    #[test]
+    fn rejected_submission_releases_the_native_reference() {
+        let mut weak = None;
+
+        let result = FrameSlot::submit(|ref_con| {
+            weak = Some(observe(ref_con));
+            -12902
+        });
+
+        assert_eq!(result.err(), Some(VTError::EncodeFailed(-12902)));
+        assert!(weak.expect("submit ran").upgrade().is_none());
+    }
+
+    #[test]
+    fn rejected_submission_after_a_synchronous_callback_releases_once() {
+        let mut weak = None;
+
+        let result = FrameSlot::submit(|ref_con| {
+            weak = Some(observe(ref_con));
+            unsafe { encode_callback(ptr::null_mut(), ref_con, 0, 0, ptr::null_mut()) };
+            -12902
+        });
+
+        assert_eq!(result.err(), Some(VTError::EncodeFailed(-12902)));
+        assert!(weak.expect("submit ran").upgrade().is_none());
+    }
+
+    #[test]
+    fn accepted_submission_hands_one_reference_to_the_encoder() {
+        let slot = FrameSlot::submit(|_| 0).expect("submission accepted");
+
+        assert_eq!(Arc::strong_count(&slot), 2);
+        let ref_con = Arc::as_ptr(&slot).cast_mut().cast::<c_void>();
+        unsafe { encode_callback(ptr::null_mut(), ref_con, 0, 5, ptr::null_mut()) };
+        assert_eq!(Arc::strong_count(&slot), 1);
+        assert_eq!(
+            slot.take().map(|output| output.map(|o| o.info_flags)),
+            Some(Ok(5))
+        );
+    }
+
+    #[test]
+    fn dropped_frame_keeps_its_source_timestamp() {
+        let frame = EncodedFrame::from_output(
+            super::FrameOutput {
+                info_flags: ffi::kVTEncodeInfo_FrameDropped,
+                sample_buffer: None,
+            },
+            CMTime::new(9, 30),
+        )
+        .expect("dropped frame is not an error");
+
+        assert!(frame.data.is_empty());
+        assert_eq!(frame.presentation_time, CMTime::new(9, 30));
+        assert_eq!(frame.info_flags, ffi::kVTEncodeInfo_FrameDropped);
+        assert!(frame.cm_sample_buffer().is_none());
     }
 
     #[test]
     fn encoded_frame_accessors_handle_missing_sample_buffer() {
         let frame = EncodedFrame {
             data: vec![1, 2, 3],
-            presentation_time: (10, 30),
+            presentation_time: CMTime::new(10, 30),
             info_flags: 7,
             sample_buffer: None,
         };
@@ -1155,7 +1562,7 @@ mod tests {
         assert!(frame.cm_sample_buffer().is_none());
         assert!(frame.cm_sample_buffer_ptr().is_null());
         assert_eq!(cloned.data, vec![1, 2, 3]);
-        assert_eq!(cloned.presentation_time, (10, 30));
+        assert_eq!(cloned.presentation_time, CMTime::new(10, 30));
         assert_eq!(cloned.info_flags, 7);
         assert!(debug.contains("EncodedFrame"));
         assert!(debug.contains("presentation_time"));

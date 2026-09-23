@@ -46,7 +46,7 @@ default = ["compression"]
 compression = []
 decompression = []
 # Future-based completion wrappers over the one-shot VideoToolbox callbacks.
-async = ["dep:doom-fish-utils"]
+async = []
 # Brings in a small Swift bridge so we can reach VTFrameProcessor (an
 # Objective-C-only API the pure-C FFI can't otherwise call). Off by default
 # so existing pure-C users don't pay for the `swift build` step.
@@ -56,7 +56,7 @@ all-features-flag = ["compression", "decompression", "async", "frame_processor"]
 [dependencies]
 apple-cf = { path = "../apple-cf-rs", version = ">=0.11, <0.12", default-features = false, features = ["cg", "cm", "iosurface", "cv"] }
 apple-metal = { path = "../apple-metal-rs", version = ">=0.10, <0.11", default-features = false, optional = true }
-doom-fish-utils = { path = "../doom-fish-utils", version = ">=0.4.1, <0.5", optional = true }
+doom-fish-utils = { path = "../doom-fish-utils", version = ">=0.4.1, <0.5" }
 
 [dev-dependencies]
 pollster = "0.3"
