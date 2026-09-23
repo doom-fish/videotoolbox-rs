@@ -117,18 +117,15 @@ impl MotionEstimationSession {
     /// # Errors
     ///
     /// Returns [`VTError::EncodeFailed`] on `OSStatus` failure.
-    pub fn source_pixel_buffer_attributes(&self) -> Result<*const c_void, VTError> {
+    pub fn source_pixel_buffer_attributes(&self) -> Result<CFDictionary, VTError> {
+        let copy_attributes =
+            ffi::dynamic::VTMotionEstimationSessionCopySourcePixelBufferAttributes()?;
         let mut attrs: ffi::CFDictionaryRef = ptr::null();
-        let s = unsafe {
-            ffi::VTMotionEstimationSessionCopySourcePixelBufferAttributes(
-                self.inner,
-                &raw mut attrs,
-            )
-        };
+        let s = unsafe { copy_attributes(self.inner, &raw mut attrs) };
         if s != 0 {
             return Err(VTError::EncodeFailed(s));
         }
-        Ok(attrs.cast())
+        unsafe { CFDictionary::from_raw(attrs.cast_mut().cast()) }.ok_or(VTError::EncodeFailed(s))
     }
 
     /// Force-complete any outstanding estimations.
