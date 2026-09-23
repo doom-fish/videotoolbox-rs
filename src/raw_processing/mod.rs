@@ -394,6 +394,7 @@ impl RawProcessingSession {
     /// or completes without a processed `CVPixelBuffer`.
     #[cfg(feature = "async")]
     #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+    #[allow(clippy::future_not_send)]
     pub async fn process_frame_async(
         &self,
         input_pixel_buffer: CVPixelBuffer,

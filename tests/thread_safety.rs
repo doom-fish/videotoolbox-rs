@@ -2,7 +2,7 @@ use videotoolbox::{
     DecompressionSession, FrameSilo, MultiPassStorage, PixelRotationSession, PixelTransferSession,
 };
 
-fn assert_send<T: Send>() {}
+const fn assert_send<T: Send>() {}
 
 trait AmbiguousIfSync<A> {
     fn check() {}

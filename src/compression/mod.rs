@@ -963,6 +963,7 @@ impl CompressionSession {
     /// drops the frame without a `CMSampleBuffer`.
     #[cfg(feature = "async")]
     #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+    #[allow(clippy::future_not_send, clippy::needless_pass_by_value)]
     pub fn encode_frame_async(
         &self,
         image_buffer: CVPixelBuffer,
@@ -1056,19 +1057,15 @@ impl CompressionSession {
         slot: &FrameSlot,
         presentation_time: CMTime,
     ) -> Result<EncodedFrame, VTError> {
-        let output = match slot.take() {
-            Some(output) => output,
-            None => {
-                let status = unsafe {
-                    ffi::VTCompressionSessionCompleteFrames(self.session, presentation_time)
-                };
-                if status != 0 {
-                    return Err(VTError::CompleteFailed(status));
-                }
-                slot.wait()
-            }
-        };
-        EncodedFrame::from_output(output?, presentation_time)
+        if let Some(output) = slot.take() {
+            return EncodedFrame::from_output(output?, presentation_time);
+        }
+        let status =
+            unsafe { ffi::VTCompressionSessionCompleteFrames(self.session, presentation_time) };
+        if status != 0 {
+            return Err(VTError::CompleteFailed(status));
+        }
+        EncodedFrame::from_output(slot.wait()?, presentation_time)
     }
 
     #[allow(clippy::unused_self)]

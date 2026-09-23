@@ -171,9 +171,12 @@ fn newest_library_archive() -> Option<PathBuf> {
         .filter_map(Result::ok)
         .map(|entry| entry.path())
         .filter(|path| {
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| name.starts_with("libvideotoolbox-") && name.ends_with(".rlib"))
+            path.extension()
+                .is_some_and(|extension| extension == "rlib")
+                && path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with("libvideotoolbox-"))
         })
         .max_by_key(|path| path.metadata().and_then(|meta| meta.modified()).ok())
 }

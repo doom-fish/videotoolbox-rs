@@ -13,14 +13,14 @@ extern "C" {
 const RTLD_DEFAULT: *mut c_void = -2_isize as *mut c_void;
 const UNRESOLVED: *mut c_void = NonNull::<c_void>::dangling().as_ptr();
 
-pub(crate) struct Symbol {
+pub struct Symbol {
     name: &'static str,
     minimum: &'static str,
     address: AtomicPtr<c_void>,
 }
 
 impl Symbol {
-    pub(crate) const fn new(name: &'static str, minimum: &'static str) -> Self {
+    pub const fn new(name: &'static str, minimum: &'static str) -> Self {
         Self {
             name,
             minimum,
@@ -28,13 +28,13 @@ impl Symbol {
         }
     }
 
-    pub(crate) fn resolve(&self) -> Result<NonNull<c_void>, VTError> {
+    pub fn resolve(&self) -> Result<NonNull<c_void>, VTError> {
         let mut address = self.address.load(Ordering::Acquire);
         if address == UNRESOLVED {
             address = unsafe { dlsym(RTLD_DEFAULT, self.name.as_ptr().cast()) };
             self.address.store(address, Ordering::Release);
         }
-        NonNull::new(address).ok_or(VTError::Unsupported {
+        NonNull::new(address).ok_or_else(|| VTError::Unsupported {
             api: self.name.trim_end_matches('\0'),
             minimum: self.minimum,
         })
@@ -45,7 +45,7 @@ macro_rules! dynamic_functions {
     ($($(#[$attr:meta])* $minimum:literal $name:ident: fn($($arg:ty),* $(,)?) $(-> $ret:ty)?;)+) => {
         $(
             $(#[$attr])*
-            pub(crate) fn $name() -> Result<unsafe extern "C" fn($($arg),*) $(-> $ret)?, VTError> {
+            pub fn $name() -> Result<unsafe extern "C" fn($($arg),*) $(-> $ret)?, VTError> {
                 static SYMBOL: Symbol = Symbol::new(concat!(stringify!($name), "\0"), $minimum);
                 SYMBOL.resolve().map(|address| unsafe {
                     core::mem::transmute::<*mut c_void, unsafe extern "C" fn($($arg),*) $(-> $ret)?>(
@@ -61,7 +61,7 @@ macro_rules! dynamic_constants {
     ($($(#[$attr:meta])* $minimum:literal $name:ident: $ty:ty;)+) => {
         $(
             $(#[$attr])*
-            pub(crate) fn $name() -> Result<$ty, VTError> {
+            pub fn $name() -> Result<$ty, VTError> {
                 static SYMBOL: Symbol = Symbol::new(concat!(stringify!($name), "\0"), $minimum);
                 SYMBOL
                     .resolve()
