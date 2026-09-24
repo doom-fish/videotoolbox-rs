@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The frame-processor exports took the submission mode as a Swift `Int` while
+  Rust passed an `i32`, so the upper half of the register was undefined on
+  arm64 and Swift fell back to random submission. Both sides now use a 32-bit
+  value, and an unknown mode returns a parameter error.
 - Binaries that used the crate failed to load on macOS 13 and 14 although the
   README and Package.swift promise macOS 13: functions and constants from
   macOS 14, 15 and 26 were strong imports, plain `DecompressionSession::decode`

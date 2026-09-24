@@ -558,7 +558,7 @@ public func vt_frame_processor_process_super_resolution(
     _ previousFrame: UnsafeMutableRawPointer?,
     _ previousOutputFrame: UnsafeMutableRawPointer?,
     _ opticalFlow: UnsafeMutableRawPointer?,
-    _ submissionMode: Int,
+    _ submissionMode: Int32,
     _ destinationFrame: UnsafeMutableRawPointer
 ) -> Int32 {
     if #available(macOS 26.0, *) {
@@ -568,12 +568,12 @@ public func vt_frame_processor_process_super_resolution(
         let previous: VTFrameProcessorFrame? = vtb_borrow_optional(previousFrame)
         let previousOutput: VTFrameProcessorFrame? = vtb_borrow_optional(previousOutputFrame)
         let flow: VTFrameProcessorOpticalFlow? = vtb_borrow_optional(opticalFlow)
-        guard let params = VTSuperResolutionScalerParameters(
+        guard let submission = VTSuperResolutionScalerParameters.SubmissionMode(rawValue: Int(submissionMode)), let params = VTSuperResolutionScalerParameters(
             sourceFrame: source,
             previousFrame: previous,
             previousOutputFrame: previousOutput,
             opticalFlow: flow,
-            submissionMode: VTSuperResolutionScalerParameters.SubmissionMode(rawValue: submissionMode) ?? .random,
+            submissionMode: submission,
             destinationFrame: destination
         ) else { return VTB_PARAM_ERR }
         return vtb_process_completion(p, parameters: params)
@@ -589,7 +589,7 @@ public func vt_frame_processor_process_super_resolution_with_command_buffer(
     _ previousFrame: UnsafeMutableRawPointer?,
     _ previousOutputFrame: UnsafeMutableRawPointer?,
     _ opticalFlow: UnsafeMutableRawPointer?,
-    _ submissionMode: Int,
+    _ submissionMode: Int32,
     _ destinationFrame: UnsafeMutableRawPointer
 ) -> Int32 {
     if #available(macOS 26.0, *) {
@@ -600,12 +600,12 @@ public func vt_frame_processor_process_super_resolution_with_command_buffer(
         let previous: VTFrameProcessorFrame? = vtb_borrow_optional(previousFrame)
         let previousOutput: VTFrameProcessorFrame? = vtb_borrow_optional(previousOutputFrame)
         let flow: VTFrameProcessorOpticalFlow? = vtb_borrow_optional(opticalFlow)
-        guard let params = VTSuperResolutionScalerParameters(
+        guard let submission = VTSuperResolutionScalerParameters.SubmissionMode(rawValue: Int(submissionMode)), let params = VTSuperResolutionScalerParameters(
             sourceFrame: source,
             previousFrame: previous,
             previousOutputFrame: previousOutput,
             opticalFlow: flow,
-            submissionMode: VTSuperResolutionScalerParameters.SubmissionMode(rawValue: submissionMode) ?? .random,
+            submissionMode: submission,
             destinationFrame: destination
         ) else { return VTB_PARAM_ERR }
         return vtb_process_command_buffer(p, commandBuffer: cb, parameters: params)
@@ -622,7 +622,7 @@ public func vt_frame_processor_process_motion_blur(
     _ nextOpticalFlow: UnsafeMutableRawPointer?,
     _ previousOpticalFlow: UnsafeMutableRawPointer?,
     _ motionBlurStrength: Int,
-    _ submissionMode: Int,
+    _ submissionMode: Int32,
     _ destinationFrame: UnsafeMutableRawPointer
 ) -> Int32 {
     if #available(macOS 15.4, *) {
@@ -633,14 +633,14 @@ public func vt_frame_processor_process_motion_blur(
         let previous: VTFrameProcessorFrame? = vtb_borrow_optional(previousFrame)
         let nextFlow: VTFrameProcessorOpticalFlow? = vtb_borrow_optional(nextOpticalFlow)
         let previousFlow: VTFrameProcessorOpticalFlow? = vtb_borrow_optional(previousOpticalFlow)
-        guard let params = VTMotionBlurParameters(
+        guard let submission = VTMotionBlurParameters.SubmissionMode(rawValue: Int(submissionMode)), let params = VTMotionBlurParameters(
             sourceFrame: source,
             nextFrame: next,
             previousFrame: previous,
             nextOpticalFlow: nextFlow,
             previousOpticalFlow: previousFlow,
             motionBlurStrength: motionBlurStrength,
-            submissionMode: VTMotionBlurParameters.SubmissionMode(rawValue: submissionMode) ?? .random,
+            submissionMode: submission,
             destinationFrame: destination
         ) else { return VTB_PARAM_ERR }
         return vtb_process_completion(p, parameters: params)
@@ -658,7 +658,7 @@ public func vt_frame_processor_process_motion_blur_with_command_buffer(
     _ nextOpticalFlow: UnsafeMutableRawPointer?,
     _ previousOpticalFlow: UnsafeMutableRawPointer?,
     _ motionBlurStrength: Int,
-    _ submissionMode: Int,
+    _ submissionMode: Int32,
     _ destinationFrame: UnsafeMutableRawPointer
 ) -> Int32 {
     if #available(macOS 15.4, *) {
@@ -670,14 +670,14 @@ public func vt_frame_processor_process_motion_blur_with_command_buffer(
         let previous: VTFrameProcessorFrame? = vtb_borrow_optional(previousFrame)
         let nextFlow: VTFrameProcessorOpticalFlow? = vtb_borrow_optional(nextOpticalFlow)
         let previousFlow: VTFrameProcessorOpticalFlow? = vtb_borrow_optional(previousOpticalFlow)
-        guard let params = VTMotionBlurParameters(
+        guard let submission = VTMotionBlurParameters.SubmissionMode(rawValue: Int(submissionMode)), let params = VTMotionBlurParameters(
             sourceFrame: source,
             nextFrame: next,
             previousFrame: previous,
             nextOpticalFlow: nextFlow,
             previousOpticalFlow: previousFlow,
             motionBlurStrength: motionBlurStrength,
-            submissionMode: VTMotionBlurParameters.SubmissionMode(rawValue: submissionMode) ?? .random,
+            submissionMode: submission,
             destinationFrame: destination
         ) else { return VTB_PARAM_ERR }
         return vtb_process_command_buffer(p, commandBuffer: cb, parameters: params)
@@ -757,7 +757,7 @@ public func vt_frame_processor_process_frame_rate_conversion(
     _ opticalFlow: UnsafeMutableRawPointer?,
     _ interpolationPhase: UnsafePointer<Float>?,
     _ interpolationPhaseCount: Int,
-    _ submissionMode: Int,
+    _ submissionMode: Int32,
     _ destinationFrames: UnsafePointer<UnsafeMutableRawPointer?>?,
     _ destinationFrameCount: Int
 ) -> Int32 {
@@ -769,12 +769,13 @@ public func vt_frame_processor_process_frame_rate_conversion(
         guard let next,
               let phases = vtb_numbers(interpolationPhase, count: interpolationPhaseCount),
               let destinations = vtb_borrow_frames(destinationFrames, count: destinationFrameCount),
+              let submission = VTFrameRateConversionParameters.SubmissionMode(rawValue: Int(submissionMode)),
               let params = VTFrameRateConversionParameters(
                 sourceFrame: source,
                 nextFrame: next,
                 opticalFlow: flow,
                 interpolationPhase: phases,
-                submissionMode: VTFrameRateConversionParameters.SubmissionMode(rawValue: submissionMode) ?? .random,
+                submissionMode: submission,
                 destinationFrames: destinations
               ) else { return VTB_PARAM_ERR }
         return vtb_process_completion(p, parameters: params)
@@ -791,7 +792,7 @@ public func vt_frame_processor_process_frame_rate_conversion_with_command_buffer
     _ opticalFlow: UnsafeMutableRawPointer?,
     _ interpolationPhase: UnsafePointer<Float>?,
     _ interpolationPhaseCount: Int,
-    _ submissionMode: Int,
+    _ submissionMode: Int32,
     _ destinationFrames: UnsafePointer<UnsafeMutableRawPointer?>?,
     _ destinationFrameCount: Int
 ) -> Int32 {
@@ -804,12 +805,13 @@ public func vt_frame_processor_process_frame_rate_conversion_with_command_buffer
         guard let next,
               let phases = vtb_numbers(interpolationPhase, count: interpolationPhaseCount),
               let destinations = vtb_borrow_frames(destinationFrames, count: destinationFrameCount),
+              let submission = VTFrameRateConversionParameters.SubmissionMode(rawValue: Int(submissionMode)),
               let params = VTFrameRateConversionParameters(
                 sourceFrame: source,
                 nextFrame: next,
                 opticalFlow: flow,
                 interpolationPhase: phases,
-                submissionMode: VTFrameRateConversionParameters.SubmissionMode(rawValue: submissionMode) ?? .random,
+                submissionMode: submission,
                 destinationFrames: destinations
               ) else { return VTB_PARAM_ERR }
         return vtb_process_command_buffer(p, commandBuffer: cb, parameters: params)
@@ -918,7 +920,7 @@ public func vt_frame_processor_process_optical_flow(
     _ processor: UnsafeMutableRawPointer,
     _ sourceFrame: UnsafeMutableRawPointer,
     _ nextFrame: UnsafeMutableRawPointer,
-    _ submissionMode: Int,
+    _ submissionMode: Int32,
     _ destinationOpticalFlow: UnsafeMutableRawPointer
 ) -> Int32 {
     if #available(macOS 15.4, *) {
@@ -926,10 +928,10 @@ public func vt_frame_processor_process_optical_flow(
         let source: VTFrameProcessorFrame = vtb_borrow(sourceFrame)
         let next: VTFrameProcessorFrame = vtb_borrow(nextFrame)
         let destination: VTFrameProcessorOpticalFlow = vtb_borrow(destinationOpticalFlow)
-        guard let params = VTOpticalFlowParameters(
+        guard let submission = VTOpticalFlowParameters.SubmissionMode(rawValue: Int(submissionMode)), let params = VTOpticalFlowParameters(
             sourceFrame: source,
             nextFrame: next,
-            submissionMode: VTOpticalFlowParameters.SubmissionMode(rawValue: submissionMode) ?? .random,
+            submissionMode: submission,
             destinationOpticalFlow: destination
         ) else { return VTB_PARAM_ERR }
         return vtb_process_completion(p, parameters: params)
@@ -943,7 +945,7 @@ public func vt_frame_processor_process_optical_flow_with_command_buffer(
     _ commandBuffer: UnsafeMutableRawPointer,
     _ sourceFrame: UnsafeMutableRawPointer,
     _ nextFrame: UnsafeMutableRawPointer,
-    _ submissionMode: Int,
+    _ submissionMode: Int32,
     _ destinationOpticalFlow: UnsafeMutableRawPointer
 ) -> Int32 {
     if #available(macOS 15.4, *) {
@@ -952,10 +954,10 @@ public func vt_frame_processor_process_optical_flow_with_command_buffer(
         let source: VTFrameProcessorFrame = vtb_borrow(sourceFrame)
         let next: VTFrameProcessorFrame = vtb_borrow(nextFrame)
         let destination: VTFrameProcessorOpticalFlow = vtb_borrow(destinationOpticalFlow)
-        guard let params = VTOpticalFlowParameters(
+        guard let submission = VTOpticalFlowParameters.SubmissionMode(rawValue: Int(submissionMode)), let params = VTOpticalFlowParameters(
             sourceFrame: source,
             nextFrame: next,
-            submissionMode: VTOpticalFlowParameters.SubmissionMode(rawValue: submissionMode) ?? .random,
+            submissionMode: submission,
             destinationOpticalFlow: destination
         ) else { return VTB_PARAM_ERR }
         return vtb_process_command_buffer(p, commandBuffer: cb, parameters: params)
