@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The seven `FrameProcessor::process_*_with_command_buffer` functions aborted
+  the process when the command buffer was already committed (`Completed
+  handler provided after commit call`) or had an apple-metal encoder open
+  (`encodeSignalEvent:value: with uncommitted encoder`), and another thread
+  could commit the buffer mid-submission. They now submit inside apple-metal's
+  `CommandBuffer::encode_foreign` and return `VTError::CommandBuffer` instead.
 - The frame-processor exports took the submission mode as a Swift `Int` while
   Rust passed an `i32`, so the upper half of the register was undefined on
   arm64 and Swift fell back to random submission. Both sides now use a 32-bit
@@ -80,6 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `VTError::CommandBuffer(apple_metal::CommandBufferError)` (with the
+  `frame_processor` feature), which is also the error's `source()`.
 - Encoder specification options on `CompressionSessionBuilder`:
   `with_hardware_acceleration(HardwareAcceleration::{Preferred, Required,
   Disabled})`, `with_encoder_id`, `with_low_latency_rate_control` and

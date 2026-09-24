@@ -1031,18 +1031,22 @@ impl FrameProcessor {
         submission_mode: FrameProcessorSubmissionMode,
         destination_frame: &FrameProcessorFrame,
     ) -> Result<(), VTError> {
-        api_result("process(with:parameters:) super-resolution", unsafe {
-            vt_frame_processor_process_super_resolution_with_command_buffer(
-                self.inner,
-                command_buffer.as_ptr(),
-                source_frame.as_ptr(),
-                frame_ptr(previous_frame),
-                frame_ptr(previous_output_frame),
-                flow_ptr(optical_flow),
-                submission_mode as i32,
-                destination_frame.as_ptr(),
-            )
-        })
+        process_with_command_buffer(
+            "process(with:parameters:) super-resolution",
+            command_buffer,
+            |command_buffer| unsafe {
+                vt_frame_processor_process_super_resolution_with_command_buffer(
+                    self.inner,
+                    command_buffer,
+                    source_frame.as_ptr(),
+                    frame_ptr(previous_frame),
+                    frame_ptr(previous_output_frame),
+                    flow_ptr(optical_flow),
+                    submission_mode as i32,
+                    destination_frame.as_ptr(),
+                )
+            },
+        )
     }
 
     /// Process one motion-blur submission.
@@ -1087,20 +1091,24 @@ impl FrameProcessor {
         submission_mode: FrameProcessorSubmissionMode,
         destination_frame: &FrameProcessorFrame,
     ) -> Result<(), VTError> {
-        api_result("process(with:parameters:) motion-blur", unsafe {
-            vt_frame_processor_process_motion_blur_with_command_buffer(
-                self.inner,
-                command_buffer.as_ptr(),
-                source_frame.as_ptr(),
-                frame_ptr(next_frame),
-                frame_ptr(previous_frame),
-                flow_ptr(next_optical_flow),
-                flow_ptr(previous_optical_flow),
-                motion_blur_strength as isize,
-                submission_mode as i32,
-                destination_frame.as_ptr(),
-            )
-        })
+        process_with_command_buffer(
+            "process(with:parameters:) motion-blur",
+            command_buffer,
+            |command_buffer| unsafe {
+                vt_frame_processor_process_motion_blur_with_command_buffer(
+                    self.inner,
+                    command_buffer,
+                    source_frame.as_ptr(),
+                    frame_ptr(next_frame),
+                    frame_ptr(previous_frame),
+                    flow_ptr(next_optical_flow),
+                    flow_ptr(previous_optical_flow),
+                    motion_blur_strength as isize,
+                    submission_mode as i32,
+                    destination_frame.as_ptr(),
+                )
+            },
+        )
     }
 
     /// Process one temporal-noise-filter submission.
@@ -1143,20 +1151,24 @@ impl FrameProcessor {
     ) -> Result<(), VTError> {
         let next_ptrs = frame_slice_ptrs(next_frames);
         let previous_ptrs = frame_slice_ptrs(previous_frames);
-        api_result("process(with:parameters:) temporal-noise-filter", unsafe {
-            vt_frame_processor_process_temporal_noise_filter_with_command_buffer(
-                self.inner,
-                command_buffer.as_ptr(),
-                source_frame.as_ptr(),
-                next_ptrs.as_ptr(),
-                next_ptrs.len(),
-                previous_ptrs.as_ptr(),
-                previous_ptrs.len(),
-                destination_frame.as_ptr(),
-                filter_strength,
-                has_discontinuity,
-            )
-        })
+        process_with_command_buffer(
+            "process(with:parameters:) temporal-noise-filter",
+            command_buffer,
+            |command_buffer| unsafe {
+                vt_frame_processor_process_temporal_noise_filter_with_command_buffer(
+                    self.inner,
+                    command_buffer,
+                    source_frame.as_ptr(),
+                    next_ptrs.as_ptr(),
+                    next_ptrs.len(),
+                    previous_ptrs.as_ptr(),
+                    previous_ptrs.len(),
+                    destination_frame.as_ptr(),
+                    filter_strength,
+                    has_discontinuity,
+                )
+            },
+        )
     }
 
     /// Process one frame-rate-conversion submission.
@@ -1207,20 +1219,24 @@ impl FrameProcessor {
             destination_frames,
         )?;
         let destination_ptrs = frame_slice_ptrs(destination_frames);
-        api_result("process(with:parameters:) frame-rate-conversion", unsafe {
-            vt_frame_processor_process_frame_rate_conversion_with_command_buffer(
-                self.inner,
-                command_buffer.as_ptr(),
-                source_frame.as_ptr(),
-                frame_ptr(next_frame),
-                flow_ptr(optical_flow),
-                interpolation_phase.as_ptr(),
-                interpolation_phase.len(),
-                submission_mode as i32,
-                destination_ptrs.as_ptr(),
-                destination_ptrs.len(),
-            )
-        })
+        process_with_command_buffer(
+            "process(with:parameters:) frame-rate-conversion",
+            command_buffer,
+            |command_buffer| unsafe {
+                vt_frame_processor_process_frame_rate_conversion_with_command_buffer(
+                    self.inner,
+                    command_buffer,
+                    source_frame.as_ptr(),
+                    frame_ptr(next_frame),
+                    flow_ptr(optical_flow),
+                    interpolation_phase.as_ptr(),
+                    interpolation_phase.len(),
+                    submission_mode as i32,
+                    destination_ptrs.as_ptr(),
+                    destination_ptrs.len(),
+                )
+            },
+        )
     }
 
     /// Process one low-latency super-resolution submission.
@@ -1245,12 +1261,13 @@ impl FrameProcessor {
         source_frame: &FrameProcessorFrame,
         destination_frame: &FrameProcessorFrame,
     ) -> Result<(), VTError> {
-        api_result(
+        process_with_command_buffer(
             "process(with:parameters:) low-latency-super-resolution",
-            unsafe {
+            command_buffer,
+            |command_buffer| unsafe {
                 vt_frame_processor_process_low_latency_super_resolution_with_command_buffer(
                     self.inner,
-                    command_buffer.as_ptr(),
+                    command_buffer,
                     source_frame.as_ptr(),
                     destination_frame.as_ptr(),
                 )
@@ -1300,12 +1317,13 @@ impl FrameProcessor {
             destination_frames,
         )?;
         let destination_ptrs = frame_slice_ptrs(destination_frames);
-        api_result(
+        process_with_command_buffer(
             "process(with:parameters:) low-latency-frame-interpolation",
-            unsafe {
+            command_buffer,
+            |command_buffer| unsafe {
                 vt_frame_processor_process_low_latency_frame_interpolation_with_command_buffer(
                     self.inner,
-                    command_buffer.as_ptr(),
+                    command_buffer,
                     source_frame.as_ptr(),
                     previous_frame.as_ptr(),
                     interpolation_phase.as_ptr(),
@@ -1345,16 +1363,20 @@ impl FrameProcessor {
         submission_mode: FrameProcessorSubmissionMode,
         destination_optical_flow: &FrameProcessorOpticalFlow,
     ) -> Result<(), VTError> {
-        api_result("process(with:parameters:) optical-flow", unsafe {
-            vt_frame_processor_process_optical_flow_with_command_buffer(
-                self.inner,
-                command_buffer.as_ptr(),
-                source_frame.as_ptr(),
-                next_frame.as_ptr(),
-                submission_mode as i32,
-                destination_optical_flow.as_ptr(),
-            )
-        })
+        process_with_command_buffer(
+            "process(with:parameters:) optical-flow",
+            command_buffer,
+            |command_buffer| unsafe {
+                vt_frame_processor_process_optical_flow_with_command_buffer(
+                    self.inner,
+                    command_buffer,
+                    source_frame.as_ptr(),
+                    next_frame.as_ptr(),
+                    submission_mode as i32,
+                    destination_optical_flow.as_ptr(),
+                )
+            },
+        )
     }
 
     /// Raw `VTFrameProcessor` pointer.
@@ -1412,6 +1434,17 @@ fn validate_parallel_lengths<T>(
             right.len()
         )))
     }
+}
+
+fn process_with_command_buffer(
+    api: &'static str,
+    command_buffer: &CommandBuffer,
+    process: impl FnOnce(*mut c_void) -> i32,
+) -> Result<(), VTError> {
+    let status = command_buffer
+        .encode_foreign(|foreign| process(foreign.command_buffer()))
+        .map_err(VTError::CommandBuffer)?;
+    api_result(api, status)
 }
 
 fn api_result(api: &'static str, status: i32) -> Result<(), VTError> {

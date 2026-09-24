@@ -42,6 +42,8 @@ pub enum VTError {
         api: &'static str,
         minimum: &'static str,
     },
+    #[cfg(feature = "frame_processor")]
+    CommandBuffer(apple_metal::CommandBufferError),
 }
 
 impl VTError {
@@ -61,6 +63,8 @@ impl VTError {
             | Self::TimedOut { .. }
             | Self::InvalidArgument(_)
             | Self::Unsupported { .. } => None,
+            #[cfg(feature = "frame_processor")]
+            Self::CommandBuffer(_) => None,
         }
     }
 }
@@ -95,11 +99,21 @@ impl fmt::Display for VTError {
             Self::Unsupported { api, minimum } => {
                 write!(f, "{api} requires macOS {minimum} or later")
             }
+            #[cfg(feature = "frame_processor")]
+            Self::CommandBuffer(error) => write!(f, "command buffer: {error}"),
         }
     }
 }
 
-impl std::error::Error for VTError {}
+impl std::error::Error for VTError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            #[cfg(feature = "frame_processor")]
+            Self::CommandBuffer(error) => Some(error),
+            _ => None,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
