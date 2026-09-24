@@ -9,6 +9,7 @@ use videotoolbox::{
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
+const VT_FRAME_PROCESSOR_INITIALIZATION_FAILED: i32 = -19736;
 
 fn rgha_pixel_buffer() -> CVPixelBuffer {
     let bytes_per_row = WIDTH * 8;
@@ -40,7 +41,13 @@ fn optical_flow_refuses_command_buffers_metal_would_abort_on() {
     let (source, next) = (frame(0), frame(1));
     let flow = FrameProcessorOpticalFlow::new(&rgha_pixel_buffer(), &rgha_pixel_buffer())
         .expect("optical flow");
-    let processor = FrameProcessor::start_optical_flow(WIDTH, HEIGHT).expect("processor");
+    let processor = match FrameProcessor::start_optical_flow(WIDTH, HEIGHT) {
+        Err(VTError::SessionCreateFailed(VT_FRAME_PROCESSOR_INITIALIZATION_FAILED)) => {
+            eprintln!("skipping: VTFrameProcessor reports optical flow but cannot initialize it");
+            return;
+        }
+        other => other.expect("processor"),
+    };
     let process = |command_buffer| {
         processor.process_optical_flow_with_command_buffer(
             command_buffer,
