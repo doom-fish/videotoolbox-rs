@@ -40,10 +40,10 @@ videotoolbox = "0.21"
 
 ## Requirements
 
-- macOS 13.0+
+- macOS 12.0+
 - Apple Silicon or Intel Mac with hardware video encoder
 
-APIs that need a newer macOS are looked up at run time, so binaries still load on macOS 13; on an older system they return `VTError::Unsupported { api, minimum }` (or `false` from the `is_*_supported` queries):
+APIs that need a newer macOS are looked up at run time, so binaries still load on macOS 12. On an older system, they return `VTError::Unsupported { api, minimum }` (or `false` from the `is_*_supported` queries):
 
 | Needs | APIs |
 | --- | --- |

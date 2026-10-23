@@ -58,7 +58,7 @@ Legend:
 
 ## Availability
 
-The crate targets macOS 13. Functions and constants introduced in macOS 14, 15 and 26 are resolved with `dlsym` on first use and return `VTError::Unsupported { api, minimum }` when missing, so no safe API imports them strongly; `tests/weak_linking.rs` checks this against the library archive. Plain `DecompressionSession::decode` uses `VTDecompressionSessionDecodeFrame` (macOS 10.8); only frame options need `VTDecompressionSessionDecodeFrameWithOptions` (macOS 15). The Swift bridge weak-links its newer symbols at its macOS 13 deployment target.
+The crate targets macOS 12. Functions and constants introduced in macOS 14, 15 and 26 are resolved with `dlsym` on first use and return `VTError::Unsupported { api, minimum }` when missing, so no safe API imports them strongly; `tests/weak_linking.rs` checks this against the library archive. Plain `DecompressionSession::decode` uses `VTDecompressionSessionDecodeFrame` (macOS 10.8); only frame options need `VTDecompressionSessionDecodeFrameWithOptions` (macOS 15). The Swift bridge weak-links its newer symbols at its macOS 12 deployment target.
 
 ## Not wrapped
 

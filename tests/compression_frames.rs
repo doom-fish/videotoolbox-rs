@@ -49,7 +49,7 @@ fn sync_encode_with_reordering_returns_each_frame_for_its_own_timestamp() -> Res
         let presentation_time = CMTime::new(index, 30);
         let frame = session.encode(&surface, presentation_time)?;
         assert_eq!(frame.presentation_time, presentation_time);
-        assert!(!frame.data.is_empty());
+        assert_ne!(frame.data.len(), 0);
     }
     Ok(())
 }
@@ -147,7 +147,7 @@ fn hevc_parameter_sets_come_from_the_format_description() -> Result<(), VTError>
     );
 
     let length_size = usize::try_from(parameter_sets.nal_unit_header_length).expect("positive");
-    assert!(!nal_units(&frame.data, length_size).is_empty());
+    assert_ne!(nal_units(&frame.data, length_size).len(), 0);
     Ok(())
 }
 
@@ -225,7 +225,7 @@ fn low_latency_rate_control_session_encodes() -> Result<(), VTError> {
         Err(error) => return Err(error),
     };
     let frame = session.encode(&make_test_surface(256, 256), CMTime::new(0, 30))?;
-    assert!(!frame.data.is_empty());
+    assert_ne!(frame.data.len(), 0);
     Ok(())
 }
 

@@ -1539,7 +1539,7 @@ mod tests {
         )
         .expect("dropped frame is not an error");
 
-        assert!(frame.data.is_empty());
+        assert_eq!(frame.data, Vec::new());
         assert_eq!(frame.presentation_time, CMTime::new(9, 30));
         assert_eq!(frame.info_flags, ffi::kVTEncodeInfo_FrameDropped);
         assert!(frame.cm_sample_buffer().is_none());

@@ -227,7 +227,7 @@ fn test_binaries_weak_link_videotoolbox_and_core_media() {
             *library == "(from VideoToolbox)" || *library == "(from CoreMedia)"
         })
         .collect();
-    assert!(!framework_imports.is_empty());
+    assert_ne!(framework_imports.len(), 0);
     let strong: Vec<&str> = framework_imports
         .iter()
         .filter(|(_, weak, _)| !weak)
