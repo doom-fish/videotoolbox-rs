@@ -361,6 +361,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refreshed crate docs and exports to reflect the optional Swift bridge and
   broader public API surface.
 
+## [0.10.1] - 2026-05-16
+
+### Changed
+
+- Accept `apple-cf` versions from 0.2 to below 0.6.
+
 ## [0.10.0] - 2026-05-16
 
 ### Added
@@ -428,6 +434,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   conversion, optical flow, and low-latency variants.
 - `super_resolution_supported_scale_factors()` returns the exact
   upscale factors the system advertises.
+
+## [0.7.0] - 2026-05-16
+
+### Added
+
+- Add `VTVideoEncoderList` to enumerate installed encoders.
+
+## [0.6.0] - 2026-05-16
+
+### Added
+
+- Add `VTPixelTransferSession` and `VTPixelRotationSession`.
+
+## [0.5.0] - 2026-05-16
+
+### Added
+
+- Add decompression session properties.
+
+## [0.4.0] - 2026-05-16
+
+### Added
+
+- Add `Quality`, `ProfileLevel` and `VTSessionSetProperty` access.
+
+## [0.3.1] - 2026-05-16
+
+### Added
+
+- Add the `DecompressionSession` wrapper.
+
+## [0.3.0] - 2026-05-16
+
+### Added
+
+- Add `VTDecompressionSession` FFI for decoders.
 
 ## [0.2.0] - 2026-05-15
 
